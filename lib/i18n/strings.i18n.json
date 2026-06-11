@@ -1,0 +1,43 @@
+{
+  "app_name": "Toko Dedy",
+  "login": {
+    "title": "Login",
+    "email_hint": "Email",
+    "password_hint": "Password",
+    "login_btn": "Masuk",
+    "register_prompt": "Belum punya toko? Daftar"
+  },
+  "home": {
+    "welcome": "Selamat datang,",
+    "logout": "Keluar"
+  },
+  "pin": {
+    "title": "Masukkan PIN",
+    "setup_title": "Buat PIN Baru",
+    "verify_title": "Konfirmasi PIN"
+  },
+  "error": {
+    "unknown": "Terjadi kesalahan yang tidak diketahui",
+    "network": "Tidak ada koneksi internet",
+    "owner_only_report": "Hanya owner yang bisa akses Laporan"
+  },
+  "dashboard": {
+    "omzet_today": "OMZET HARI INI",
+    "transaction": "Transaksi",
+    "sold": "Terjual",
+    "low_stock": "Stok Menipis",
+    "see_all": "Lihat semua",
+    "remaining": "Sisa"
+  },
+  "quick_actions": {
+    "title": "Aksi Cepat",
+    "cashier": "KASIR",
+    "report": "LAPORAN",
+    "product": "PRODUK",
+    "add": "TAMBAH"
+  },
+  "price_update": {
+    "title": "Update Harga Barang",
+    "product_deleted": "Produk Dihapus"
+  }
+}

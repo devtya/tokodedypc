@@ -1,0 +1,16 @@
+import 'package:drift/drift.dart';
+
+class PendingPembelianTable extends Table {
+  TextColumn get id           => text()(); // UUID
+  TextColumn? get supplierId  => text().nullable()(); // UUID FK ke supplier
+  TextColumn? get namaSupplier => text().nullable()();
+  BoolColumn get isPpnEnabled => boolean().withDefault(const Constant(false))();
+  RealColumn get ppnPercent   => real().withDefault(const Constant(11.0))();
+  IntColumn get diskonTipe    => integer().withDefault(const Constant(0))();
+  RealColumn get diskonPersen => real().withDefault(const Constant(0))();
+  RealColumn get diskonNominal => real().withDefault(const Constant(0))();
+  DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}

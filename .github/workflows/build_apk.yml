@@ -1,0 +1,127 @@
+name: Build & Release
+on:
+  push:
+    tags:
+      - 'v*'
+permissions:
+  contents: write
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Get version from pubspec.yaml
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' \r\n')
+          # Ambil hanya versionName (sebelum '+')
+          VERSION_NAME=${VERSION%%+*}
+          echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+          echo "Build version: $VERSION_NAME"
+
+      - name: Generate Drift code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Build APK
+        env:
+          KEYSTORE_PATH: keystore/release.keystore
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          flutter build apk --release \
+            --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
+            --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+
+      - name: Rename APK
+        run: |
+          VERSION="${{ steps.version.outputs.VERSION_NAME }}"
+          OUTPUT_DIR="build/app/outputs/flutter-apk"
+          echo "=== APK files in output dir ==="
+          ls -la "$OUTPUT_DIR/"
+          # Cari APK apapun (bisa app-release.apk atau yang sudah di-rename Gradle)
+          SRC=$(find "$OUTPUT_DIR" -name "*.apk" | grep -v "unsigned" | head -1)
+          DEST="tokodedy-v${VERSION}.apk"
+          cp "$SRC" "$DEST"
+          echo "Renamed: $SRC -> $DEST"
+          echo "APK_NAME=$DEST" >> $GITHUB_OUTPUT
+        id: rename
+
+      - name: Upload Release Asset (APK)
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ steps.rename.outputs.APK_NAME }}
+          generate_release_notes: true
+          name: "tokodedy v${{ steps.version.outputs.VERSION_NAME }}"
+
+  # build-windows:
+  #   runs-on: windows-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+  # 
+  #     - name: Setup Flutter
+  #       uses: subosito/flutter-action@v2
+  #       with:
+  #         channel: 'stable'
+  #         cache: true
+  # 
+  #     - name: Install dependencies
+  #       run: flutter pub get
+  # 
+  #     - name: Get version from pubspec.yaml
+  #       id: version
+  #       shell: bash
+  #       run: |
+  #         VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | tr -d ' \r\n')
+  #         VERSION_NAME=${VERSION%%+*}
+  #         echo "VERSION_NAME=$VERSION_NAME" >> $GITHUB_OUTPUT
+  #         echo "Build version: $VERSION_NAME"
+  # 
+  #     - name: Generate Drift code
+  #       run: dart run build_runner build --delete-conflicting-outputs
+  # 
+  #     - name: Enable Windows Desktop
+  #       run: flutter config --enable-windows-desktop
+  # 
+  #     - name: Build Windows
+  #       shell: bash
+  #       run: |
+  #         flutter build windows --release \
+  #           --dart-define=SUPABASE_URL="${{ secrets.SUPABASE_URL }}" \
+  #           --dart-define=SUPABASE_ANON_KEY="${{ secrets.SUPABASE_ANON_KEY }}"
+  # 
+  #     - name: Compress Windows Build
+  #       shell: bash
+  #       run: |
+  #         VERSION="${{ steps.version.outputs.VERSION_NAME }}"
+  #                   DEST="tokodedy-v${VERSION}-Windows.zip"
+  #         cd build/windows/x64/runner/Release
+  #         7z a "../../../../../$DEST" *
+  #         cd ../../../../../
+  #         echo "ZIP_NAME=$DEST" >> $GITHUB_OUTPUT
+  #       id: compress
+  # 
+  #     - name: Upload Release Asset (Windows)
+  #       uses: softprops/action-gh-release@v2
+  #       with:
+  #         files: ${{ steps.compress.outputs.ZIP_NAME }}
+  #         generate_release_notes: true
+  #                   name: "tokodedy v${{ steps.version.outputs.VERSION_NAME }}"

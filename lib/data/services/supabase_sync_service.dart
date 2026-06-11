@@ -1,0 +1,665 @@
+import 'dart:convert';
+import 'dart:async';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:drift/drift.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+
+import '../database/app_database.dart';
+
+import 'package:injectable/injectable.dart';
+
+/// Sync service baru — direct upsert per-tabel ke Supabase.
+/// Tidak ada lagi blob JSON atau sync_record_table.
+/// Strategi:
+///   - Write: tulis ke Drift lokal dulu, lalu upsert ke Supabase.
+///     Jika offline → antri di pending_sync_queue_table.
+///   - Read: pull dari Supabase berdasarkan updated_at > lastSync.
+///   - Conflict: last-write-wins via updated_at.
+@lazySingleton
+class SupabaseSyncService {
+  final AppDatabase _db;
+  final SupabaseClient _supabase;
+  final SharedPreferences _prefs;
+  final _uuid = const Uuid();
+
+  final _onlineOrderEventController = StreamController<void>.broadcast();
+  Stream<void> get onOnlineOrderReceived => _onlineOrderEventController.stream;
+
+  static const _lastSyncKey = 'last_sync_v2';
+
+  SupabaseSyncService({
+    required AppDatabase db,
+    required SupabaseClient supabase,
+    required SharedPreferences prefs,
+  })  : _db = db,
+        _supabase = supabase,
+        _prefs = prefs;
+
+  // ─────────────────────────────────────────────────
+  // PUBLIC API
+  // ─────────────────────────────────────────────────
+
+  /// Generate UUID baru untuk record yang akan dibuat
+  String generateId() => _uuid.v4();
+
+  /// Cek apakah ada koneksi internet
+  Future<bool> get isOnline async {
+    final result = await Connectivity().checkConnectivity();
+    return !result.contains(ConnectivityResult.none) && result.isNotEmpty;
+  }
+
+  /// Push: upsert record ke Supabase atau antri jika offline
+  Future<void> upsert(String tableName, Map<String, dynamic> data) async {
+    // Inject timestamp agar proses pull() di device lain bisa mendeteksi perubahan
+    final now = DateTime.now().toUtc().toIso8601String();
+    if (_pullOrder.contains(tableName)) {
+      data['updated_at'] = now;
+    } else if (_appendOnlyTables.contains(tableName)) {
+      data['created_at'] ??= now;
+    }
+
+    if (await isOnline) {
+      try {
+        await _supabase.from(tableName).upsert(data, onConflict: 'id');
+        print('Supabase sync upsert success: $tableName ${data['id']}');
+        return;
+      } catch (e) {
+        print('Supabase sync upsert failed for $tableName ${data['id']}: $e');
+        // Jika gagal, antri
+      }
+    }
+    // Offline → antri
+    print('Supabase offline, enqueuing upsert: $tableName ${data['id']}');
+    await _enqueue(tableName, 'upsert', data['id'] as String, data);
+  }
+
+  /// Delete: hapus record dari Supabase atau antri jika offline
+  Future<void> delete(String tableName, String id) async {
+    if (await isOnline) {
+      try {
+        await _supabase.from(tableName).delete().eq('id', id);
+        print('Supabase sync delete success: $tableName $id');
+        return;
+      } catch (e) {
+        print('Supabase sync delete failed for $tableName $id: $e');
+        // Jika gagal, antri
+      }
+    }
+    // Offline → antri
+    print('Supabase offline, enqueuing delete: $tableName $id');
+    await _enqueue(tableName, 'delete', id, {'id': id});
+  }
+
+  /// Pull: download perubahan dari Supabase sejak lastSync
+  Future<List<String>> pull({
+    void Function(String table, int count)? onTablePulled,
+    bool force = false,
+  }) async {
+    final lastSync = _prefs.getString(_lastSyncKey) ?? '1970-01-01T00:00:00Z';
+    final pulledTables = <String>[];
+
+    for (final table in _pullOrder) {
+      try {
+        dynamic query = _supabase.from(table).select();
+        if (force) {
+          query = query.order('created_at');
+        } else {
+          query = query.gte('updated_at', lastSync).order('updated_at');
+        }
+        final rows = await query;
+
+        if ((rows as List).isEmpty) continue;
+
+        await _applyPulledRows(table, rows.cast<Map<String, dynamic>>());
+        pulledTables.add(table);
+        onTablePulled?.call(table, rows.length);
+      } catch (_) {
+        // Skip tabel yang error (mungkin belum punya updated_at)
+      }
+    }
+
+    // Pull tabel tanpa updated_at (append-only)
+    for (final table in _appendOnlyTables) {
+      try {
+        dynamic query = _supabase.from(table).select();
+        if (force) {
+          query = query.order('created_at');
+        } else {
+          query = query.gte('created_at', lastSync).order('created_at');
+        }
+        final rows = await query;
+
+        if ((rows as List).isEmpty) continue;
+        await _applyPulledRows(table, rows.cast<Map<String, dynamic>>());
+        pulledTables.add(table);
+        onTablePulled?.call(table, rows.length);
+      } catch (_) {}
+    }
+
+    await _prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
+    return pulledTables;
+  }
+
+  bool _isRealtimeInitialized = false;
+
+  /// Initialize realtime listener for Supabase
+  void initRealtimeListeners() {
+    if (_isRealtimeInitialized) return;
+    _isRealtimeInitialized = true;
+
+    _supabase
+        .channel('public:online_orders')
+        .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'online_orders',
+            callback: (payload) async {
+              final newRecord = payload.newRecord;
+              if (newRecord['status'] == 'pending' || newRecord['status'] == 'shipped') {
+                final orderId = newRecord['id'] as String;
+                final customerId = newRecord['customer_id'] as String;
+                final totalHarga = newRecord['total_harga'];
+
+                // Jeda awal: beri waktu agar app pelanggan selesai insert semua item ke Supabase
+                // Sesuai request user, kita beri delay 1 menit (60 detik) agar data lengkap masuk
+                await Future.delayed(const Duration(minutes: 1));
+
+                // Pull data order & customer dulu
+                await pull();
+
+                // Retry loop: pastikan items sudah masuk ke Supabase sebelum notify kasir
+                // Max 10 percobaan × 10 detik = ~100 detik total worst case
+                List<Map<String, dynamic>> fetchedItems = [];
+                const maxRetries = 10;
+                const retryDelay = Duration(seconds: 10);
+
+                for (int attempt = 1; attempt <= maxRetries; attempt++) {
+                  try {
+                    final result = await _supabase
+                        .from('online_order_items')
+                        .select()
+                        .eq('online_order_id', orderId);
+                    fetchedItems = (result as List).cast<Map<String, dynamic>>();
+                  } catch (_) {}
+
+                  if (fetchedItems.isNotEmpty) break;
+
+                  // Items belum ada, tunggu sebentar lalu coba lagi
+                  if (attempt < maxRetries) {
+                    await Future.delayed(retryDelay);
+                  }
+                }
+
+                // Simpan items ke DB lokal (meskipun masih kosong setelah max retry)
+                if (fetchedItems.isNotEmpty) {
+                  await _applyPulledRows('online_order_items', fetchedItems);
+                }
+
+                // Tarik customer kalau belum ada di DB lokal
+                try {
+                  final customers = await _supabase
+                      .from('online_customers')
+                      .select()
+                      .eq('id', customerId);
+                  if ((customers as List).isNotEmpty) {
+                    await _applyPulledRows('online_customers', customers.cast<Map<String, dynamic>>());
+                  }
+                } catch (_) {}
+
+                // Simpan notifikasi ke DB lokal (setelah data lengkap)
+                await _db.into(_db.notifikasiTable).insert(NotifikasiTableCompanion.insert(
+                  id: _uuid.v4(),
+                  judul: 'Pesanan Online Baru',
+                  pesan: 'Ada pesanan online baru (${fetchedItems.length} item, Total: Rp $totalHarga).',
+                  tipe: const Value('ORDER'),
+                  createdAt: Value(DateTime.now()),
+                ));
+
+                // Notify listeners untuk update UI — dijamin items sudah ada di DB lokal
+                _onlineOrderEventController.add(null);
+              }
+            })
+        .subscribe();
+  }
+
+  /// Force pull khusus untuk online_orders, online_customers, dan online_order_items
+  /// dengan filter agar tidak terlalu berat saat direfresh
+  Future<void> pullOnlineOrdersForce() async {
+    try {
+      // 1. Tarik orders yang masih aktif ATAU baru diupdate dalam 14 hari terakhir
+      // Ini memastikan kasir tetap bisa melihat orderan 'completed' baru-baru ini untuk keperluan komplain,
+      // sekaligus menghindari tarikan ribuan data history lama.
+      final fourteenDaysAgo = DateTime.now().subtract(const Duration(days: 14)).toUtc().toIso8601String();
+      final orders = await _supabase
+          .from('online_orders')
+          .select()
+          .or('status.in.("pending","processing","ready"),updated_at.gte.$fourteenDaysAgo');
+          
+      if ((orders as List).isEmpty) return;
+      final orderList = orders.cast<Map<String, dynamic>>();
+
+      // 2. Tarik customers untuk order tersebut
+      final customerIds = orderList.map((e) => e['customer_id'] as String).toSet().toList();
+      if (customerIds.isNotEmpty) {
+        for (var i = 0; i < customerIds.length; i += 100) {
+          final chunk = customerIds.skip(i).take(100).toList();
+          final customers = await _supabase
+              .from('online_customers')
+              .select()
+              .inFilter('id', chunk);
+          if ((customers as List).isNotEmpty) {
+            await _applyPulledRows('online_customers', customers.cast<Map<String, dynamic>>());
+          }
+        }
+      }
+
+      // 3. Simpan orders ke lokal
+      await _applyPulledRows('online_orders', orderList);
+
+      // 4. Tarik order items untuk order tersebut
+      // Kita fetch berdasarkan order_id karena online_order_items tidak memiliki created_at
+      final orderIds = orderList.map((e) => e['id'] as String).toSet().toList();
+      if (orderIds.isNotEmpty) {
+        for (var i = 0; i < orderIds.length; i += 100) {
+          final chunk = orderIds.skip(i).take(100).toList();
+          final items = await _supabase
+              .from('online_order_items')
+              .select()
+              .inFilter('online_order_id', chunk);
+          if ((items as List).isNotEmpty) {
+            await _applyPulledRows('online_order_items', items.cast<Map<String, dynamic>>());
+          }
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Full sync: download semua data toko dari Supabase (untuk install baru)
+  Future<void> performInitialSync({
+    required void Function(int fetched, int total) onProgress,
+  }) async {
+    const allTables = [
+      ...(_pullOrder),
+      ...(_appendOnlyTables),
+    ];
+
+    int total = allTables.length;
+    int done = 0;
+    onProgress(0, total);
+
+    for (final table in allTables) {
+      try {
+        final rows = await _supabase
+            .from(table)
+            .select()
+            .order('created_at');
+
+        if ((rows as List).isNotEmpty) {
+          await _applyPulledRows(table, rows.cast<Map<String, dynamic>>());
+        }
+      } catch (_) {}
+
+      done++;
+      onProgress(done, total);
+    }
+
+    // Pull profiles
+    try {
+      final profiles = await _supabase
+          .from('profiles')
+          .select();
+      for (final p in profiles as List) {
+        await _db.into(_db.userTable).insertOnConflictUpdate(UserTableCompanion(
+          id: Value(p['id'] as String),
+          nama: Value(p['nama'] as String?),
+          role: Value(p['role'] as String? ?? 'kasir'),
+        ));
+      }
+    } catch (_) {}
+
+    await _prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
+    await _prefs.setBool('initial_sync_done_v2', true);
+  }
+
+  Future<bool> get isInitialSyncDone async {
+    return _prefs.getBool('initial_sync_done_v2') == true;
+  }
+
+  /// Flush antrian operasi yang belum berhasil di-sync
+  Future<int> flushQueue() async {
+    if (!(await isOnline)) return 0;
+
+    final queue = await _db.select(_db.pendingSyncQueueTable).get();
+    int flushed = 0;
+
+    for (final item in queue) {
+      try {
+        final payload = jsonDecode(item.payload) as Map<String, dynamic>;
+        if (item.operation == 'upsert') {
+          await _supabase.from(item.targetTable).upsert(payload, onConflict: 'id');
+        } else if (item.operation == 'delete') {
+          await _supabase.from(item.targetTable).delete().eq('id', item.recordId);
+        }
+        // Hapus dari queue setelah berhasil
+        await (_db.delete(_db.pendingSyncQueueTable)
+          ..where((t) => t.id.equals(item.id)))
+            .go();
+        flushed++;
+      } catch (_) {
+        // Biarkan di queue untuk retry berikutnya
+      }
+    }
+
+    return flushed;
+  }
+
+  // ─────────────────────────────────────────────────
+  // PRIVATE HELPERS
+  // ─────────────────────────────────────────────────
+
+  Future<void> _enqueue(
+    String tableName,
+    String operation,
+    String recordId,
+    Map<String, dynamic> payload,
+  ) async {
+    await _db.into(_db.pendingSyncQueueTable).insert(
+      PendingSyncQueueTableCompanion(
+        targetTable: Value(tableName),
+        operation: Value(operation),
+        recordId: Value(recordId),
+        payload: Value(jsonEncode(payload)),
+      ),
+    );
+  }
+
+  Future<void> _applyPulledRows(
+    String table,
+    List<Map<String, dynamic>> rows,
+  ) async {
+    for (final row in rows) {
+      await _inserters[table]?.call(_db, row);
+    }
+  }
+}
+
+// ─────────────────────────────────────────────────
+// PULL ORDER (dependency order — parent sebelum child)
+// ─────────────────────────────────────────────────
+
+const _pullOrder = [
+  'produk',
+  'satuan_produk',
+  'supplier',
+  'supplier_products',
+  'transaksi',
+  'hutang_piutang',
+  'pembelian',
+  'purchase_orders',
+  'pending_order',
+  'pending_pembelian',
+  'online_customers',
+  'online_orders',
+];
+
+const _appendOnlyTables = [
+  'item_transaksi',
+  'item_pembelian',
+  'purchase_order_items',
+  'riwayat_stok',
+  'notifikasi',
+  'pending_order_item',
+  'pending_pembelian_item',
+  'online_order_items',
+];
+
+// ─────────────────────────────────────────────────
+// INSERTERS — Supabase JSON → Drift local table
+// ─────────────────────────────────────────────────
+
+typedef _Inserter = Future<void> Function(AppDatabase db, Map<String, dynamic> row);
+
+final Map<String, _Inserter> _inserters = {
+  'produk': (db, r) async {
+    await db.into(db.produkTable).insertOnConflictUpdate(ProdukTableCompanion(
+      id: Value(r['id'] as String),
+      nama: Value(r['nama'] as String),
+      barcode: Value(r['barcode'] as String?),
+      hargaBeli: Value((r['harga_beli'] as num).toDouble()),
+      hargaJual: Value((r['harga_jual'] as num).toDouble()),
+      stok: Value(r['stok'] as int? ?? 0),
+      stokMinimum: Value(r['stok_minimum'] as int?),
+      kategori: Value(r['kategori'] as String?),
+      satuan: Value(r['satuan'] as String? ?? 'pcs'),
+      imageUrl: Value(r['image_url'] as String?),
+      updatedAt: Value(_parseDate(r['updated_at'])),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'satuan_produk': (db, r) async {
+    await db.into(db.satuanProdukTable).insertOnConflictUpdate(SatuanProdukTableCompanion(
+      id: Value(r['id'] as String),
+      produkId: Value(r['produk_id'] as String),
+      nama: Value(r['nama'] as String),
+      konversi: Value((r['konversi'] as num).toDouble()),
+      hargaBeli: Value((r['harga_beli'] as num).toDouble()),
+      hargaJual: Value((r['harga_jual'] as num).toDouble()),
+      updatedAt: Value(_parseDate(r['updated_at'])),
+    ));
+  },
+  'supplier': (db, r) async {
+    await db.into(db.supplierTable).insertOnConflictUpdate(SupplierTableCompanion(
+      id: Value(r['id'] as String),
+      nama: Value(r['nama'] as String),
+      telepon: Value(r['telepon'] as String?),
+      alamat: Value(r['alamat'] as String?),
+      updatedAt: Value(_parseDate(r['updated_at'])),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'supplier_products': (db, r) async {
+    await db.into(db.supplierProductsTable).insertOnConflictUpdate(SupplierProductsTableCompanion(
+      id: Value(r['id'] as String),
+      supplierId: Value(r['supplier_id'] as String),
+      produkId: Value(r['produk_id'] as String),
+      harga: Value((r['harga'] as num).toDouble()),
+      updatedAt: Value(_parseDate(r['updated_at'])),
+    ));
+  },
+  'transaksi': (db, r) async {
+    await db.into(db.transaksiTable).insertOnConflictUpdate(TransaksiTableCompanion(
+      id: Value(r['id'] as String),
+      kasirId: Value(r['kasir_id'] as String?),
+      totalHarga: Value((r['total_harga'] as num).toDouble()),
+      jumlahBayar: Value((r['jumlah_bayar'] as num).toDouble()),
+      kembalian: Value((r['kembalian'] as num).toDouble()),
+      status: Value(r['status'] as String? ?? 'lunas'),
+      updatedAt: Value(_parseDate(r['updated_at'])),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'item_transaksi': (db, r) async {
+    await db.into(db.itemTransaksiTable).insertOnConflictUpdate(ItemTransaksiTableCompanion(
+      id: Value(r['id'] as String),
+      transaksiId: Value(r['transaksi_id'] as String),
+      produkId: Value(r['produk_id'] as String),
+      jumlah: Value(r['jumlah'] as int),
+      hargaSatuan: Value((r['harga_satuan'] as num).toDouble()),
+      subtotal: Value((r['subtotal'] as num).toDouble()),
+    ));
+  },
+  'hutang_piutang': (db, r) async {
+    await db.into(db.hutangPiutangTable).insertOnConflictUpdate(HutangPiutangTableCompanion(
+      id: Value(r['id'] as String),
+      transaksiId: Value(r['transaksi_id'] as String?),
+      namaPelanggan: Value(r['nama_pelanggan'] as String),
+      jumlah: Value((r['jumlah'] as num).toDouble()),
+      status: Value(r['status'] as String? ?? 'belum_lunas'),
+      tanggalJatuhTempo: Value(r['tanggal_jatuh_tempo'] != null
+          ? DateTime.tryParse(r['tanggal_jatuh_tempo'] as String)
+          : null),
+      updatedAt: Value(_parseDate(r['updated_at'])),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'pembelian': (db, r) async {
+    await db.into(db.pembelianTable).insertOnConflictUpdate(PembelianTableCompanion(
+      id: Value(r['id'] as String),
+      supplierId: Value(r['supplier_id'] as String?),
+      namaSupplier: Value(r['nama_supplier'] as String?),
+      totalHarga: Value((r['total_harga'] as num).toDouble()),
+      updatedAt: Value(_parseDate(r['updated_at'])),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'item_pembelian': (db, r) async {
+    await db.into(db.itemPembelianTable).insertOnConflictUpdate(ItemPembelianTableCompanion(
+      id: Value(r['id'] as String),
+      pembelianId: Value(r['pembelian_id'] as String),
+      produkId: Value(r['produk_id'] as String),
+      jumlah: Value(r['jumlah'] as int),
+      hargaBeliSatuan: Value((r['harga_beli_satuan'] as num).toDouble()),
+      subtotal: Value((r['subtotal'] as num).toDouble()),
+      satuanId: Value(r['satuan_id'] as String?),
+      konversi: Value((r['konversi'] as num? ?? 1.0).toDouble()),
+    ));
+  },
+  'riwayat_stok': (db, r) async {
+    await db.into(db.riwayatStokTable).insertOnConflictUpdate(RiwayatStokTableCompanion(
+      id: Value(r['id'] as String),
+      produkId: Value(r['produk_id'] as String),
+      tipe: Value(r['tipe'] as String),
+      jumlah: Value(r['jumlah'] as int),
+      keterangan: Value(r['keterangan'] as String?),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'notifikasi': (db, r) async {
+    await db.into(db.notifikasiTable).insertOnConflictUpdate(NotifikasiTableCompanion(
+      id: Value(r['id'] as String),
+      judul: Value(r['judul'] as String),
+      pesan: Value(r['pesan'] as String),
+      tipe: Value(r['tipe'] as String? ?? 'INFO'),
+      isRead: Value(r['is_read'] as bool? ?? false),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'pending_order': (db, r) async {
+    await db.into(db.pendingOrderTable).insertOnConflictUpdate(PendingOrderTableCompanion(
+      id: Value(r['id'] as String),
+      namaPelanggan: Value(r['nama_pelanggan'] as String),
+      catatan: Value(r['catatan'] as String?),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'pending_order_item': (db, r) async {
+    await db.into(db.pendingOrderItemTable).insertOnConflictUpdate(PendingOrderItemTableCompanion(
+      id: Value(r['id'] as String),
+      pendingOrderId: Value(r['pending_order_id'] as String),
+      produkId: Value(r['produk_id'] as String),
+      namaProduk: Value(r['nama_produk'] as String),
+      hargaJual: Value((r['harga_jual'] as num).toDouble()),
+      jumlah: Value(r['jumlah'] as int),
+      diskonTipe: Value(r['diskon_tipe'] as int? ?? 0),
+      diskonValue: Value((r['diskon_value'] as num? ?? 0).toDouble()),
+      subtotal: Value((r['subtotal'] as num).toDouble()),
+    ));
+  },
+  'purchase_orders': (db, r) async {
+    await db.into(db.purchaseOrderTable).insertOnConflictUpdate(PurchaseOrderTableCompanion(
+      id: Value(r['id'] as String),
+      supplierId: Value(r['supplier_id'] as String?),
+      namaSupplier: Value(r['nama_supplier'] as String?),
+      status: Value(r['status'] as String? ?? 'open'),
+      totalHarga: Value((r['total_harga'] as num).toDouble()),
+      notes: Value(r['notes'] as String?),
+      updatedAt: Value(_parseDate(r['updated_at'])),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'purchase_order_items': (db, r) async {
+    await db.into(db.purchaseOrderItemTable).insertOnConflictUpdate(PurchaseOrderItemTableCompanion(
+      id: Value(r['id'] as String),
+      poId: Value(r['po_id'] as String),
+      produkId: Value(r['produk_id'] as String),
+      namaProduk: Value(r['nama_produk'] as String?),
+      qtyPesan: Value(r['qty_pesan'] as int),
+      qtyTerima: Value((r['qty_terima'] as num?)?.toInt() ?? 0),
+      hargaSatuan: Value((r['harga_satuan'] as num).toDouble()),
+      subtotal: Value((r['subtotal'] as num).toDouble()),
+      satuanId: Value(r['satuan_id'] as String?),
+      konversi: Value((r['konversi'] as num? ?? 1.0).toDouble()),
+    ));
+  },
+  'pending_pembelian': (db, r) async {
+    await db.into(db.pendingPembelianTable).insertOnConflictUpdate(PendingPembelianTableCompanion(
+      id: Value(r['id'] as String),
+      supplierId: Value(r['supplier_id'] as String?),
+      namaSupplier: Value(r['nama_supplier'] as String?),
+      isPpnEnabled: Value(r['is_ppn_enabled'] as bool? ?? false),
+      ppnPercent: Value((r['ppn_percent'] as num? ?? 11.0).toDouble()),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'pending_pembelian_item': (db, r) async {
+    await db.into(db.pendingPembelianItemTable).insertOnConflictUpdate(PendingPembelianItemTableCompanion(
+      id: Value(r['id'] as String),
+      pendingPembelianId: Value(r['pending_pembelian_id'] as String),
+      produkId: Value(r['produk_id'] as String),
+      namaProduk: Value(r['nama_produk'] as String),
+      jumlah: Value(r['jumlah'] as int),
+      hargaBeliSatuan: Value((r['harga_beli_satuan'] as num).toDouble()),
+      hargaBeliLama: Value((r['harga_beli_lama'] as num).toDouble()),
+      diskonTipe: Value(r['diskon_tipe'] as int? ?? 0),
+      diskonValue: Value((r['diskon_value'] as num? ?? 0).toDouble()),
+      satuanId: Value(r['satuan_id'] as String?),
+      konversi: Value((r['konversi'] as num? ?? 1.0).toDouble()),
+    ));
+  },
+  'online_customers': (db, r) async {
+    await db.into(db.onlineCustomerTable).insertOnConflictUpdate(OnlineCustomerTableCompanion(
+      id: Value(r['id']?.toString() ?? ''),
+      nama: Value(r['nama']?.toString() ?? 'Pelanggan Online'),
+      telepon: Value(r['telepon']?.toString()),
+      alamat: Value(r['alamat']?.toString()),
+      updatedAt: Value(_parseDate(r['updated_at'])),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'online_orders': (db, r) async {
+    await db.into(db.onlineOrderTable).insertOnConflictUpdate(OnlineOrderTableCompanion(
+      id: Value(r['id']?.toString() ?? ''),
+      customerId: Value(r['customer_id']?.toString() ?? ''),
+      status: Value(r['status']?.toString() ?? 'pending'),
+      totalHarga: Value((r['total_harga'] as num?)?.toDouble() ?? 0.0),
+      metodePengiriman: Value(r['metode_pengiriman']?.toString() ?? 'pickup'),
+      alamatPengiriman: Value(r['alamat_pengiriman']?.toString()),
+      catatan: Value(r['catatan']?.toString()),
+      updatedAt: Value(_parseDate(r['updated_at'])),
+      createdAt: Value(_parseDate(r['created_at'])),
+    ));
+  },
+  'online_order_items': (db, r) async {
+    await db.into(db.onlineOrderItemTable).insertOnConflictUpdate(OnlineOrderItemTableCompanion(
+      id: Value(r['id']?.toString() ?? ''),
+      onlineOrderId: Value(r['online_order_id']?.toString() ?? ''),
+      produkId: Value(r['produk_id']?.toString() ?? ''),
+      namaProduk: Value(r['nama_produk']?.toString() ?? ''),
+      hargaSatuan: Value((r['harga_satuan'] as num?)?.toDouble() ?? 0.0),
+      jumlah: Value((r['jumlah'] as num?)?.toInt() ?? 0),
+      subtotal: Value((r['subtotal'] as num?)?.toDouble() ?? 0.0),
+      satuanId: Value(r['satuan_id']?.toString()),
+      konversi: Value((r['konversi'] as num?)?.toDouble() ?? 1.0),
+      isUnavailable: Value(r['is_unavailable'] as bool? ?? false),
+    ));
+  },
+};
+
+DateTime _parseDate(dynamic v) {
+  if (v == null) return DateTime.now();
+  if (v is DateTime) return v;
+  return DateTime.tryParse(v.toString()) ?? DateTime.now();
+}
