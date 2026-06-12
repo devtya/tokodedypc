@@ -85,20 +85,23 @@ class BuatTransaksi {
     required List<CartItem> cartItems,
     required double jumlahBayar,
     String? namaPelanggan,
+    double diskonGlobal = 0,
   }) async {
     return db.transaction(() async {
-            final totalHarga = cartItems.fold(
+      final subtotal = cartItems.fold(
         0.0,
         (sum, item) => sum + item.totalSetelahDiskon,
       );
+      final totalHarga = subtotal - diskonGlobal;
       final status = namaPelanggan != null ? 'hutang' : 'lunas';
 
       final transaksiId = await transaksiRepository.addTransaksi(
         Transaksi(
-              totalHarga: totalHarga,
+          totalHarga: totalHarga,
           jumlahBayar: jumlahBayar,
           kembalian: jumlahBayar - totalHarga,
           status: status,
+          diskonGlobal: diskonGlobal,
         ),
       );
 

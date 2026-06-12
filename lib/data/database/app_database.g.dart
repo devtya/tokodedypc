@@ -2762,6 +2762,18 @@ class $TransaksiTableTable extends TransaksiTable
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _diskonGlobalMeta = const VerificationMeta(
+    'diskonGlobal',
+  );
+  @override
+  late final GeneratedColumn<double> diskonGlobal = GeneratedColumn<double>(
+    'diskon_global',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -2803,6 +2815,7 @@ class $TransaksiTableTable extends TransaksiTable
     totalHarga,
     jumlahBayar,
     kembalian,
+    diskonGlobal,
     status,
     updatedAt,
     createdAt,
@@ -2849,6 +2862,15 @@ class $TransaksiTableTable extends TransaksiTable
       context.handle(
         _kembalianMeta,
         kembalian.isAcceptableOrUnknown(data['kembalian']!, _kembalianMeta),
+      );
+    }
+    if (data.containsKey('diskon_global')) {
+      context.handle(
+        _diskonGlobalMeta,
+        diskonGlobal.isAcceptableOrUnknown(
+          data['diskon_global']!,
+          _diskonGlobalMeta,
+        ),
       );
     }
     if (data.containsKey('status')) {
@@ -2898,6 +2920,10 @@ class $TransaksiTableTable extends TransaksiTable
         DriftSqlType.double,
         data['${effectivePrefix}kembalian'],
       )!,
+      diskonGlobal: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}diskon_global'],
+      )!,
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -2926,6 +2952,7 @@ class TransaksiTableData extends DataClass
   final double totalHarga;
   final double jumlahBayar;
   final double kembalian;
+  final double diskonGlobal;
   final String status;
   final DateTime updatedAt;
   final DateTime createdAt;
@@ -2935,6 +2962,7 @@ class TransaksiTableData extends DataClass
     required this.totalHarga,
     required this.jumlahBayar,
     required this.kembalian,
+    required this.diskonGlobal,
     required this.status,
     required this.updatedAt,
     required this.createdAt,
@@ -2949,6 +2977,7 @@ class TransaksiTableData extends DataClass
     map['total_harga'] = Variable<double>(totalHarga);
     map['jumlah_bayar'] = Variable<double>(jumlahBayar);
     map['kembalian'] = Variable<double>(kembalian);
+    map['diskon_global'] = Variable<double>(diskonGlobal);
     map['status'] = Variable<String>(status);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     map['created_at'] = Variable<DateTime>(createdAt);
@@ -2964,6 +2993,7 @@ class TransaksiTableData extends DataClass
       totalHarga: Value(totalHarga),
       jumlahBayar: Value(jumlahBayar),
       kembalian: Value(kembalian),
+      diskonGlobal: Value(diskonGlobal),
       status: Value(status),
       updatedAt: Value(updatedAt),
       createdAt: Value(createdAt),
@@ -2981,6 +3011,7 @@ class TransaksiTableData extends DataClass
       totalHarga: serializer.fromJson<double>(json['totalHarga']),
       jumlahBayar: serializer.fromJson<double>(json['jumlahBayar']),
       kembalian: serializer.fromJson<double>(json['kembalian']),
+      diskonGlobal: serializer.fromJson<double>(json['diskonGlobal']),
       status: serializer.fromJson<String>(json['status']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
@@ -2995,6 +3026,7 @@ class TransaksiTableData extends DataClass
       'totalHarga': serializer.toJson<double>(totalHarga),
       'jumlahBayar': serializer.toJson<double>(jumlahBayar),
       'kembalian': serializer.toJson<double>(kembalian),
+      'diskonGlobal': serializer.toJson<double>(diskonGlobal),
       'status': serializer.toJson<String>(status),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
       'createdAt': serializer.toJson<DateTime>(createdAt),
@@ -3007,6 +3039,7 @@ class TransaksiTableData extends DataClass
     double? totalHarga,
     double? jumlahBayar,
     double? kembalian,
+    double? diskonGlobal,
     String? status,
     DateTime? updatedAt,
     DateTime? createdAt,
@@ -3016,6 +3049,7 @@ class TransaksiTableData extends DataClass
     totalHarga: totalHarga ?? this.totalHarga,
     jumlahBayar: jumlahBayar ?? this.jumlahBayar,
     kembalian: kembalian ?? this.kembalian,
+    diskonGlobal: diskonGlobal ?? this.diskonGlobal,
     status: status ?? this.status,
     updatedAt: updatedAt ?? this.updatedAt,
     createdAt: createdAt ?? this.createdAt,
@@ -3031,6 +3065,9 @@ class TransaksiTableData extends DataClass
           ? data.jumlahBayar.value
           : this.jumlahBayar,
       kembalian: data.kembalian.present ? data.kembalian.value : this.kembalian,
+      diskonGlobal: data.diskonGlobal.present
+          ? data.diskonGlobal.value
+          : this.diskonGlobal,
       status: data.status.present ? data.status.value : this.status,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
@@ -3045,6 +3082,7 @@ class TransaksiTableData extends DataClass
           ..write('totalHarga: $totalHarga, ')
           ..write('jumlahBayar: $jumlahBayar, ')
           ..write('kembalian: $kembalian, ')
+          ..write('diskonGlobal: $diskonGlobal, ')
           ..write('status: $status, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('createdAt: $createdAt')
@@ -3059,6 +3097,7 @@ class TransaksiTableData extends DataClass
     totalHarga,
     jumlahBayar,
     kembalian,
+    diskonGlobal,
     status,
     updatedAt,
     createdAt,
@@ -3072,6 +3111,7 @@ class TransaksiTableData extends DataClass
           other.totalHarga == this.totalHarga &&
           other.jumlahBayar == this.jumlahBayar &&
           other.kembalian == this.kembalian &&
+          other.diskonGlobal == this.diskonGlobal &&
           other.status == this.status &&
           other.updatedAt == this.updatedAt &&
           other.createdAt == this.createdAt);
@@ -3083,6 +3123,7 @@ class TransaksiTableCompanion extends UpdateCompanion<TransaksiTableData> {
   final Value<double> totalHarga;
   final Value<double> jumlahBayar;
   final Value<double> kembalian;
+  final Value<double> diskonGlobal;
   final Value<String> status;
   final Value<DateTime> updatedAt;
   final Value<DateTime> createdAt;
@@ -3093,6 +3134,7 @@ class TransaksiTableCompanion extends UpdateCompanion<TransaksiTableData> {
     this.totalHarga = const Value.absent(),
     this.jumlahBayar = const Value.absent(),
     this.kembalian = const Value.absent(),
+    this.diskonGlobal = const Value.absent(),
     this.status = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3104,6 +3146,7 @@ class TransaksiTableCompanion extends UpdateCompanion<TransaksiTableData> {
     this.totalHarga = const Value.absent(),
     this.jumlahBayar = const Value.absent(),
     this.kembalian = const Value.absent(),
+    this.diskonGlobal = const Value.absent(),
     this.status = const Value.absent(),
     this.updatedAt = const Value.absent(),
     this.createdAt = const Value.absent(),
@@ -3115,6 +3158,7 @@ class TransaksiTableCompanion extends UpdateCompanion<TransaksiTableData> {
     Expression<double>? totalHarga,
     Expression<double>? jumlahBayar,
     Expression<double>? kembalian,
+    Expression<double>? diskonGlobal,
     Expression<String>? status,
     Expression<DateTime>? updatedAt,
     Expression<DateTime>? createdAt,
@@ -3126,6 +3170,7 @@ class TransaksiTableCompanion extends UpdateCompanion<TransaksiTableData> {
       if (totalHarga != null) 'total_harga': totalHarga,
       if (jumlahBayar != null) 'jumlah_bayar': jumlahBayar,
       if (kembalian != null) 'kembalian': kembalian,
+      if (diskonGlobal != null) 'diskon_global': diskonGlobal,
       if (status != null) 'status': status,
       if (updatedAt != null) 'updated_at': updatedAt,
       if (createdAt != null) 'created_at': createdAt,
@@ -3139,6 +3184,7 @@ class TransaksiTableCompanion extends UpdateCompanion<TransaksiTableData> {
     Value<double>? totalHarga,
     Value<double>? jumlahBayar,
     Value<double>? kembalian,
+    Value<double>? diskonGlobal,
     Value<String>? status,
     Value<DateTime>? updatedAt,
     Value<DateTime>? createdAt,
@@ -3150,6 +3196,7 @@ class TransaksiTableCompanion extends UpdateCompanion<TransaksiTableData> {
       totalHarga: totalHarga ?? this.totalHarga,
       jumlahBayar: jumlahBayar ?? this.jumlahBayar,
       kembalian: kembalian ?? this.kembalian,
+      diskonGlobal: diskonGlobal ?? this.diskonGlobal,
       status: status ?? this.status,
       updatedAt: updatedAt ?? this.updatedAt,
       createdAt: createdAt ?? this.createdAt,
@@ -3175,6 +3222,9 @@ class TransaksiTableCompanion extends UpdateCompanion<TransaksiTableData> {
     if (kembalian.present) {
       map['kembalian'] = Variable<double>(kembalian.value);
     }
+    if (diskonGlobal.present) {
+      map['diskon_global'] = Variable<double>(diskonGlobal.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -3198,6 +3248,7 @@ class TransaksiTableCompanion extends UpdateCompanion<TransaksiTableData> {
           ..write('totalHarga: $totalHarga, ')
           ..write('jumlahBayar: $jumlahBayar, ')
           ..write('kembalian: $kembalian, ')
+          ..write('diskonGlobal: $diskonGlobal, ')
           ..write('status: $status, ')
           ..write('updatedAt: $updatedAt, ')
           ..write('createdAt: $createdAt, ')
@@ -13830,6 +13881,7 @@ typedef $$TransaksiTableTableCreateCompanionBuilder =
       Value<double> totalHarga,
       Value<double> jumlahBayar,
       Value<double> kembalian,
+      Value<double> diskonGlobal,
       Value<String> status,
       Value<DateTime> updatedAt,
       Value<DateTime> createdAt,
@@ -13842,6 +13894,7 @@ typedef $$TransaksiTableTableUpdateCompanionBuilder =
       Value<double> totalHarga,
       Value<double> jumlahBayar,
       Value<double> kembalian,
+      Value<double> diskonGlobal,
       Value<String> status,
       Value<DateTime> updatedAt,
       Value<DateTime> createdAt,
@@ -13879,6 +13932,11 @@ class $$TransaksiTableTableFilterComposer
 
   ColumnFilters<double> get kembalian => $composableBuilder(
     column: $table.kembalian,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get diskonGlobal => $composableBuilder(
+    column: $table.diskonGlobal,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13932,6 +13990,11 @@ class $$TransaksiTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get diskonGlobal => $composableBuilder(
+    column: $table.diskonGlobal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -13975,6 +14038,11 @@ class $$TransaksiTableTableAnnotationComposer
 
   GeneratedColumn<double> get kembalian =>
       $composableBuilder(column: $table.kembalian, builder: (column) => column);
+
+  GeneratedColumn<double> get diskonGlobal => $composableBuilder(
+    column: $table.diskonGlobal,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -14028,6 +14096,7 @@ class $$TransaksiTableTableTableManager
                 Value<double> totalHarga = const Value.absent(),
                 Value<double> jumlahBayar = const Value.absent(),
                 Value<double> kembalian = const Value.absent(),
+                Value<double> diskonGlobal = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -14038,6 +14107,7 @@ class $$TransaksiTableTableTableManager
                 totalHarga: totalHarga,
                 jumlahBayar: jumlahBayar,
                 kembalian: kembalian,
+                diskonGlobal: diskonGlobal,
                 status: status,
                 updatedAt: updatedAt,
                 createdAt: createdAt,
@@ -14050,6 +14120,7 @@ class $$TransaksiTableTableTableManager
                 Value<double> totalHarga = const Value.absent(),
                 Value<double> jumlahBayar = const Value.absent(),
                 Value<double> kembalian = const Value.absent(),
+                Value<double> diskonGlobal = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
@@ -14060,6 +14131,7 @@ class $$TransaksiTableTableTableManager
                 totalHarga: totalHarga,
                 jumlahBayar: jumlahBayar,
                 kembalian: kembalian,
+                diskonGlobal: diskonGlobal,
                 status: status,
                 updatedAt: updatedAt,
                 createdAt: createdAt,

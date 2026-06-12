@@ -1,19 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide AuthState, User;
-import 'package:workmanager/workmanager.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-
-import 'data/services/supabase_sync_service.dart';
 
 import 'domain/entities/user.dart';
 import 'core/config.dart';
 import 'core/di/injection.dart';
 import 'core/services/update_service.dart';
 import 'core/theme/app_theme.dart';
-import 'data/services/bluetooth_printer_service.dart';
-import 'data/services/printer_settings.dart';
 import 'i18n/strings.g.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'presentation/blocs/auth/auth_bloc.dart';
@@ -113,25 +108,6 @@ class _PinGateState extends State<_PinGate> {
   }
 }
 
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    try {
-      WidgetsFlutterBinding.ensureInitialized();
-      await Supabase.initialize(
-        url: AppConfig.supabaseUrl,
-        anonKey: AppConfig.supabaseAnonKey,
-      );
-      await initDependencies();
-      final syncService = sl<SupabaseSyncService>();
-      await syncService.flushQueue();
-      return Future.value(true);
-    } catch (e) {
-      return Future.value(false);
-    }
-  });
-}
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('id', null);
@@ -140,18 +116,6 @@ void main() async {
   await Supabase.initialize(
     url: AppConfig.supabaseUrl,
     anonKey: AppConfig.supabaseAnonKey,
-  );
-
-  Workmanager().initialize(
-    callbackDispatcher,
-  );
-  Workmanager().registerPeriodicTask(
-    "sync_task_1",
-    "syncSupabaseTask",
-    frequency: const Duration(minutes: 15),
-    constraints: Constraints(
-      networkType: NetworkType.connected,
-    ),
   );
 
   await initDependencies();
@@ -167,48 +131,21 @@ class TokodedyApp extends StatefulWidget {
   State<TokodedyApp> createState() => _TokodedyAppState();
 }
 
-class _TokodedyAppState extends State<TokodedyApp> with WidgetsBindingObserver {
+class _TokodedyAppState extends State<TokodedyApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-
-    // Auto-connect Bluetooth printer setelah widget tree siap
-    Future.delayed(const Duration(seconds: 2), _tryAutoConnectBluetooth);
 
     // Listen untuk Supabase auth events — handle password recovery deep link
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       if (data.event == AuthChangeEvent.passwordRecovery) {
-        // User klik link reset password dari email → buka halaman isi password baru
         _navigatorKey.currentState?.push(
           MaterialPageRoute(builder: (_) => const ResetPasswordPage()),
         );
       }
     });
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed) {
-      _tryAutoConnectBluetooth();
-    }
-  }
-
-  void _tryAutoConnectBluetooth() {
-    try {
-      final settings = sl<PrinterSettings>();
-      if (settings.type == 'bluetooth' && settings.enabled) {
-        sl<BluetoothPrinterService>().autoConnect();
-      }
-    } catch (_) {}
   }
 
   @override

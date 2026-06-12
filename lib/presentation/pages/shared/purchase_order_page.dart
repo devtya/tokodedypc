@@ -300,8 +300,7 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
   }
 
   void _openReceiveForm(PurchaseOrder po) {
-    Navigator.push(
-      context,
+    _navKey.currentState!.push(
       MaterialPageRoute(
         builder: (_) => MultiBlocProvider(
           providers: [
@@ -353,8 +352,7 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
     );
 
     if (mounted) {
-      Navigator.push(
-        context,
+      _navKey.currentState!.push(
         MaterialPageRoute(
           builder: (_) => ShareReceiptPage(
             receipt: receipt,
@@ -436,8 +434,7 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
   }
 
   void _openCreateForm() {
-    Navigator.push(
-      context,
+    _navKey.currentState!.push(
       MaterialPageRoute(
         builder: (_) => MultiBlocProvider(
           providers: [
@@ -455,8 +452,7 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
   }
 
   void _openEditForm(PurchaseOrder po, List<PurchaseOrderItem> items) {
-    Navigator.push(
-      context,
+    _navKey.currentState!.push(
       MaterialPageRoute(
         builder: (_) => MultiBlocProvider(
           providers: [
@@ -497,8 +493,21 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
     );
   }
 
+  final GlobalKey<NavigatorState> _navKey = GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
+    return Navigator(
+      key: _navKey,
+      onGenerateRoute: (settings) {
+        return MaterialPageRoute(
+          builder: (innerCtx) => _buildMain(innerCtx),
+        );
+      },
+    );
+  }
+
+  Widget _buildMain(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Purchase Order'),
@@ -534,9 +543,7 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
             if (state.list.isEmpty) {
               return const Center(child: Text('Belum ada Purchase Order'));
             }
-            return RefreshIndicator(
-              onRefresh: () async => context.read<PurchaseOrderBloc>().add(LoadPurchaseOrders()),
-              child: ListView.builder(
+            return ListView.builder(
                 padding: const EdgeInsets.all(16),
                 itemCount: state.list.length,
                 itemBuilder: (context, index) {
@@ -587,8 +594,7 @@ class _PurchaseOrderPageState extends State<PurchaseOrderPage> {
                     ),
                   );
                 },
-              ),
-            );
+              );
           }
           return const SizedBox();
         },

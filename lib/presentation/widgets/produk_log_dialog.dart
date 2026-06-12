@@ -17,12 +17,16 @@ class ProdukLogDialog extends StatefulWidget {
   final Produk produk;
   final bool isAdmin;
   final VoidCallback? onEditTap;
+  final bool isSidePanel;
+  final VoidCallback? onCloseSidePanel;
 
   const ProdukLogDialog({
     super.key,
     required this.produk,
     this.isAdmin = false,
     this.onEditTap,
+    this.isSidePanel = false,
+    this.onCloseSidePanel,
   });
 
   @override
@@ -78,59 +82,84 @@ class _ProdukLogDialogState extends State<ProdukLogDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    final content = Padding(
+      padding: EdgeInsets.all(widget.isSidePanel ? 16 : 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (!widget.isSidePanel) ...[
             _buildHeader(),
             const Divider(height: 24),
-            if (_loading)
-              const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(24),
-                  child: CircularProgressIndicator(),
-                ),
-              )
-            else ...[
-              _buildSection(
-                icon: Icons.shopping_cart_outlined,
-                title: 'Pembelian Terakhir',
-                child: _lastPembelian != null
-                    ? _buildPembelianContent()
-                    : _buildEmpty(),
+          ],
+          if (_loading)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(24),
+                child: CircularProgressIndicator(),
               ),
-              const SizedBox(height: 12),
-              _buildSection(
-                icon: Icons.point_of_sale_outlined,
-                title: 'Penjualan Terakhir',
-                child: _lastPenjualan != null
-                    ? _buildPenjualanContent()
-                    : _buildEmpty(),
+            )
+          else ...[
+            _buildSection(
+              icon: Icons.shopping_cart_outlined,
+              title: 'Pembelian Terakhir',
+              child: _lastPembelian != null
+                  ? _buildPembelianContent()
+                  : _buildEmpty(),
+            ),
+            const SizedBox(height: 12),
+            _buildSection(
+              icon: Icons.point_of_sale_outlined,
+              title: 'Penjualan Terakhir',
+              child: _lastPenjualan != null
+                  ? _buildPenjualanContent()
+                  : _buildEmpty(),
+            ),
+            const SizedBox(height: 12),
+            _buildSection(
+              icon: Icons.trending_up_outlined,
+              title: 'Perubahan Harga Terakhir',
+              child: _lastHargaChange != null
+                  ? _buildHargaChangeContent()
+                  : _buildEmpty(),
+            ),
+            const SizedBox(height: 12),
+            _buildSection(
+              icon: Icons.history,
+              title: 'Riwayat Perubahan',
+              child: _riwayatPerubahan.isNotEmpty
+                  ? _buildRiwayatPerubahanContent()
+                  : _buildEmpty(),
+            ),
+          ],
+        ],
+      ),
+    );
+
+    if (widget.isSidePanel) {
+      return Scaffold(
+        appBar: AppBar(
+          title: Text('Riwayat: ${widget.produk.nama}'),
+          leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: widget.onCloseSidePanel ?? () => Navigator.pop(context),
+          ),
+          actions: [
+            if (widget.isAdmin && widget.onEditTap != null)
+              IconButton(
+                icon: const Icon(Icons.edit_outlined),
+                tooltip: 'Edit Produk',
+                onPressed: widget.onEditTap,
               ),
-              const SizedBox(height: 12),
-              _buildSection(
-                icon: Icons.trending_up_outlined,
-                title: 'Perubahan Harga Terakhir',
-                child: _lastHargaChange != null
-                    ? _buildHargaChangeContent()
-                    : _buildEmpty(),
-              ),
-              const SizedBox(height: 12),
-              _buildSection(
-                icon: Icons.history,
-                title: 'Riwayat Perubahan',
-                child: _riwayatPerubahan.isNotEmpty
-                    ? _buildRiwayatPerubahanContent()
-                    : _buildEmpty(),
-              ),
-            ],
           ],
         ),
-      ),
+        body: SingleChildScrollView(child: content),
+      );
+    }
+
+    return Dialog(
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: content,
     );
   }
 

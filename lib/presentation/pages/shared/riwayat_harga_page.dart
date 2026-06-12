@@ -45,12 +45,17 @@ class _RiwayatHargaPageState extends State<RiwayatHargaPage> {
     }
 
     if (mounted) {
-      await Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => BlocProvider(
-            create: (_) => sl<ProdukBloc>(),
-            child: ProdukFormPage(produk: produk),
+      await showDialog(
+        context: context,
+        builder: (_) => Dialog(
+          clipBehavior: Clip.antiAlias,
+          child: SizedBox(
+            width: 800,
+            height: 600,
+            child: BlocProvider(
+              create: (_) => sl<ProdukBloc>(),
+              child: ProdukFormPage(produk: produk),
+            ),
           ),
         ),
       );
@@ -86,11 +91,7 @@ class _RiwayatHargaPageState extends State<RiwayatHargaPage> {
 
             final isDark = Theme.of(context).brightness == Brightness.dark;
 
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<RiwayatHargaBloc>().add(const LoadRiwayatHarga());
-              },
-              child: ListView.separated(
+            return ListView.separated(
                 itemCount: state.riwayat.length,
                 separatorBuilder: (context, index) => Divider(
                   height: 1,
@@ -181,8 +182,7 @@ class _RiwayatHargaPageState extends State<RiwayatHargaPage> {
                     ),
                   );
                 },
-              ),
-            );
+              );
           }
           return const SizedBox.shrink();
         },

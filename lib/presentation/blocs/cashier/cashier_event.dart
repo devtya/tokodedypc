@@ -69,6 +69,14 @@ class SetDiskonItem extends CashierEvent {
   List<Object?> get props => [index, tipe, value];
 }
 
+class SetGlobalDiskon extends CashierEvent {
+  final int tipe;
+  final double value;
+  const SetGlobalDiskon(this.tipe, this.value);
+  @override
+  List<Object?> get props => [tipe, value];
+}
+
 class LoadCartFromPending extends CashierEvent {
   final List<CartItem> items;
   const LoadCartFromPending(this.items);

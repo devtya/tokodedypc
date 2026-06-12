@@ -25,6 +25,7 @@ class ReceiptGenerator {
     required List<CartItem> cartItems,
     required double totalBayar,
     required double kembalian,
+    double diskonGlobal = 0.0,
     String metodePembayaran = 'Tunai',
   }) {
     final now = DateTime.now();
@@ -62,6 +63,7 @@ class ReceiptGenerator {
       items: items,
       subtotal: subtotal,
       totalDiskon: totalDiskon,
+      globalDiskon: diskonGlobal,
       totalBayar: totalBayar,
       kembalian: kembalian,
       metodePembayaran: metodePembayaran,

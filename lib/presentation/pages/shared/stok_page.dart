@@ -10,7 +10,15 @@ import '../../blocs/stok/stok_state.dart';
 
 class StokPage extends StatefulWidget {
   final Produk produk;
-  const StokPage({super.key, required this.produk});
+  final bool isSidePanel;
+  final VoidCallback? onCloseSidePanel;
+
+  const StokPage({
+    super.key,
+    required this.produk,
+    this.isSidePanel = false,
+    this.onCloseSidePanel,
+  });
 
   @override
   State<StokPage> createState() => _StokPageState();
@@ -84,9 +92,31 @@ class _StokPageState extends State<StokPage> {
       decimalDigits: 0,
     );
 
-    return Scaffold(
-      appBar: AppBar(title: Text('Stok: ${widget.produk.nama}')),
-      body: BlocConsumer<StokBloc, StokState>(
+    return Column(
+      children: [
+        // Panel header bar
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            border: Border(bottom: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
+          ),
+          child: Row(
+            children: [
+              Text(
+                'Stok: ${widget.produk.nama}',
+                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+              ),
+              const Spacer(),
+              IconButton(
+                icon: const Icon(Icons.close, size: 18),
+                onPressed: widget.onCloseSidePanel ?? () => Navigator.pop(context),
+                visualDensity: VisualDensity.compact,
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: BlocConsumer<StokBloc, StokState>(
         listener: (context, state) {
           if (state is StokOperationSuccess) {
             ScaffoldMessenger.of(
@@ -162,13 +192,7 @@ class _StokPageState extends State<StokPage> {
                     : state is StokLoaded && state.riwayatList.isEmpty
                     ? const Center(child: Text('Belum ada riwayat stok'))
                     : state is StokLoaded
-                    ? RefreshIndicator(
-                        onRefresh: () async {
-                          context.read<StokBloc>().add(
-                            LoadRiwayatStok(widget.produk.id!),
-                          );
-                        },
-                        child: ListView.builder(
+                    ? ListView.builder(
                           padding: const EdgeInsets.symmetric(horizontal: 16),
                           itemCount: state.riwayatList.length,
                           itemBuilder: (context, index) {
@@ -213,14 +237,15 @@ class _StokPageState extends State<StokPage> {
                               ),
                             );
                           },
-                        ),
-                      )
+                        )
                     : const SizedBox(),
               ),
             ],
           );
         },
       ),
+      ),
+      ],
     );
   }
 }

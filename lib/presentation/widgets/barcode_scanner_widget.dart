@@ -1,43 +1,40 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_scanner/mobile_scanner.dart';
 
 Future<String?> showBarcodeScannerDialog(BuildContext context, {bool isOnlineOrder = false}) {
+  final controller = TextEditingController();
   return showDialog<String>(
     context: context,
-    builder: (ctx) => _buildCameraScanner(ctx, isOnlineOrder),
-  );
-}
-
-AlertDialog _buildCameraScanner(BuildContext context, bool isOnlineOrder) {
-  return AlertDialog(
-    contentPadding: EdgeInsets.zero,
-    content: SizedBox(
-      width: double.maxFinite,
-      height: 300,
-      child: MobileScanner(
-        controller: MobileScannerController(
-          formats: [
-            BarcodeFormat.code128,
-            BarcodeFormat.code39,
-            BarcodeFormat.code93,
-            BarcodeFormat.codabar,
-            BarcodeFormat.ean13,
-            BarcodeFormat.ean8,
-            BarcodeFormat.itf,
-            BarcodeFormat.upcA,
-            BarcodeFormat.upcE,
-            if (isOnlineOrder) BarcodeFormat.qrCode,
-          ],
+    builder: (ctx) => AlertDialog(
+      title: const Text('Masukkan Barcode'),
+      content: TextField(
+        controller: controller,
+        autofocus: true,
+        decoration: const InputDecoration(
+          hintText: 'Scan atau ketik barcode...',
+          border: OutlineInputBorder(),
+          prefixIcon: Icon(Icons.qr_code_scanner),
         ),
-        onDetect: (capture) {
-          final barcode = capture.barcodes.firstOrNull?.rawValue;
-          if (barcode != null) {
-            Navigator.pop(context, barcode);
+        onSubmitted: (value) {
+          if (value.isNotEmpty) {
+            Navigator.pop(ctx, value.trim());
           }
         },
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Batal'),
+        ),
+        FilledButton(
+          onPressed: () {
+            final value = controller.text.trim();
+            if (value.isNotEmpty) {
+              Navigator.pop(ctx, value);
+            }
+          },
+          child: const Text('Cari'),
+        ),
+      ],
     ),
   );
 }
-
-

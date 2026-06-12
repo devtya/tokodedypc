@@ -1208,30 +1208,133 @@ class _PembelianFormPageState extends State<PembelianFormPage> {
         child: _isLoadingPending
             ? const Scaffold(body: Center(child: CircularProgressIndicator()))
             : Scaffold(
-                appBar: AppBar(
-                  title: const Text('Pembelian Barang'),
-                  actions: [
-                    IconButton(
-                      icon: const Icon(Icons.pending_actions),
-                      tooltip: 'Pending Pembelian',
-                      onPressed: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => const PendingPembelianPage(),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-                body: Column(
-                  children: [
-                    _buildSupplierSection(),
-                    _buildSearchSection(),
-                    Expanded(child: _buildCartList()),
-                    _buildBottomPanel(),
-                  ],
+                backgroundColor: Theme.of(context).colorScheme.surface,
+                body: SafeArea(
+                  child: Column(
+                    children: [
+                      // Desktop Header
+                      Container(
+                        height: 56,
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          border: Border(bottom: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
+                        ),
+                        child: Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back),
+                              onPressed: () {
+                                setState(() => _forcePop = true);
+                                Navigator.pop(context);
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            const Text('Pembelian Barang', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                            const Spacer(),
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const PendingPembelianPage(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.pending_actions, size: 18),
+                              label: const Text('Pending Pembelian'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+                                foregroundColor: AppTheme.primary,
+                                elevation: 0,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // 2-Column Body
+                      Expanded(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // ══ PANEL KIRI: Supplier & Cari Produk ══════════════
+                            Container(
+                              width: 420,
+                              decoration: BoxDecoration(
+                                border: Border(
+                                  right: BorderSide(
+                                    color: Theme.of(context).brightness == Brightness.dark
+                                        ? Colors.white12
+                                        : const Color(0xFFE5E7EB),
+                                    width: 1,
+                                  ),
+                                ),
+                              ),
+                              child: Column(
+                                children: [
+                                  _buildSupplierSection(),
+                                  _buildSearchSection(),
+                                  // Empty state untuk area kiri
+                                  const Expanded(
+                                    child: Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.shopping_basket_rounded, size: 80, color: Colors.black12),
+                                          SizedBox(height: 16),
+                                          Text(
+                                            'Pilih supplier lalu\ncari/scan produk untuk dibeli',
+                                            textAlign: TextAlign.center,
+                                            style: TextStyle(color: Colors.grey, fontSize: 14, height: 1.6),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            
+                            // ══ PANEL KANAN: Keranjang & Bayar ══════════════════
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  // Header Keranjang
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                                    decoration: BoxDecoration(
+                                      border: Border(
+                                        bottom: BorderSide(
+                                          color: Theme.of(context).brightness == Brightness.dark
+                                              ? Colors.white12
+                                              : const Color(0xFFE5E7EB),
+                                        ),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.shopping_cart_rounded, size: 18),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'Keranjang (${_items.length} item)',
+                                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  
+                                  // Cart List
+                                  Expanded(child: _buildCartList()),
+                                  
+                                  // Bottom Panel
+                                  _buildBottomPanel(),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
       ),

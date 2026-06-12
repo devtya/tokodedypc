@@ -55,6 +55,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
         title: Text(user.isOwner ? 'Edit Owner' : 'Edit Kasir'),
         content: TextField(
           controller: namaCtrl,
+          autofocus: true,
           decoration: const InputDecoration(
             labelText: 'Nama',
             prefixIcon: Icon(Icons.badge),
@@ -79,10 +80,8 @@ class _UserManagementPageState extends State<UserManagementPage> {
                 await _authRepo.updateUser(user.copyWith(nama: nama));
                 if (!mounted) return;
 
-                if (ctx.mounted) {
-                  Navigator.pop(ctx);
-                }
-                
+                if (ctx.mounted) Navigator.pop(ctx);
+
                 _loadUsers();
                 context.read<AuthBloc>().add(CheckAuthStatus());
               } catch (e) {
@@ -111,8 +110,7 @@ class _UserManagementPageState extends State<UserManagementPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text('Hapus Akun'),
-        content: Text(
-            'Yakin ingin menghapus akun ${user.nama ?? user.email}?'),
+        content: Text('Yakin ingin menghapus akun ${user.nama ?? user.email}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
@@ -231,64 +229,176 @@ class _UserManagementPageState extends State<UserManagementPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Manajemen Pengguna')),
-        body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              itemCount: _users.length,
-              itemBuilder: (context, index) {
-                final user = _users[index];
-                final currentUser = _authRepo.getCurrentUser();
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: user.isOwner
-                        ? AppTheme.primaryGreen
-                        : AppTheme.neutralGrey,
-                    child: Icon(
-                      user.isOwner
-                          ? Icons.admin_panel_settings
-                          : Icons.person,
-                      color: Colors.white,
+    return Column(
+      children: [
+        // ── Toolbar ─────────────────────────────────────────────────
+        _buildToolbar(),
+        // ── Content ─────────────────────────────────────────────────
+        Expanded(
+          child: _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : _buildTable(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildToolbar() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: isDark ? Theme.of(context).colorScheme.surface : Colors.white,
+        border: Border(
+          bottom: BorderSide(color: isDark ? Colors.white12 : const Color(0xFFE5E7EB)),
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            '${_users.length} pengguna',
+            style: TextStyle(fontSize: 13, color: AppTheme.neutralGrey),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            tooltip: 'Refresh',
+            onPressed: _loadUsers,
+          ),
+          const SizedBox(width: 8),
+          ElevatedButton.icon(
+            onPressed: () async {
+              final result = await Navigator.push<bool>(
+                context,
+                MaterialPageRoute(builder: (_) => const InviteKasirPage()),
+              );
+              if (result == true) _loadUsers();
+            },
+            icon: const Icon(Icons.person_add, size: 16),
+            label: const Text('Undang Kasir'),
+            style: ElevatedButton.styleFrom(visualDensity: VisualDensity.compact),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTable() {
+    if (_users.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.people_outline, size: 64, color: AppTheme.neutralGrey.withValues(alpha: 0.3)),
+            const SizedBox(height: 16),
+            Text('Belum ada pengguna', style: TextStyle(color: AppTheme.neutralGrey)),
+          ],
+        ),
+      );
+    }
+
+    final currentUser = _authRepo.getCurrentUser();
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(20),
+      child: Card(
+        child: SizedBox(
+          width: double.infinity,
+          child: DataTable(
+            columnSpacing: 20,
+            headingRowHeight: 44,
+            dataRowMinHeight: 52,
+            dataRowMaxHeight: 60,
+            headingRowColor: WidgetStateProperty.all(Theme.of(context).colorScheme.surface),
+            columns: const [
+              DataColumn(label: Text('NAMA', style: TextStyle(fontWeight: FontWeight.w700))),
+              DataColumn(label: Text('ROLE', style: TextStyle(fontWeight: FontWeight.w700))),
+              DataColumn(label: Text('EMAIL', style: TextStyle(fontWeight: FontWeight.w700))),
+              DataColumn(label: Text('AKSI', style: TextStyle(fontWeight: FontWeight.w700))),
+            ],
+            rows: _users.map((user) {
+              return DataRow(
+                cells: [
+                  DataCell(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: user.isOwner
+                              ? AppTheme.primaryGreen
+                              : AppTheme.neutralGrey.withValues(alpha: 0.3),
+                          child: Icon(
+                            user.isOwner ? Icons.admin_panel_settings : Icons.person,
+                            color: Colors.white,
+                            size: 16,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Text(
+                          user.nama ?? 'Kasir',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                      ],
                     ),
                   ),
-                  title: Text(user.nama ?? user.email ?? 'Kasir'),
-                  subtitle: Text(user.role.toUpperCase() + (user.email != null ? ' • ${user.email}' : '')),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      if (currentUser?.isOwner == true && !user.isOwner)
-                        IconButton(
-                          icon: const Icon(Icons.pin, color: Colors.orange),
-                          tooltip: 'Reset PIN',
-                          onPressed: () => _showResetPinDialog(user),
-                        ),
-                      IconButton(
-                        icon: const Icon(Icons.edit, color: Colors.blue),
-                        onPressed: () => _showEditDialog(user),
+                  DataCell(
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: user.isOwner
+                            ? AppTheme.primaryGreen.withValues(alpha: 0.12)
+                            : AppTheme.neutralGrey.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      if (!user.isOwner)
-                        IconButton(
-                          icon: const Icon(
-                            Icons.delete,
-                            color: AppTheme.warningRed,
-                          ),
-                          onPressed: () => _confirmDelete(user),
+                      child: Text(
+                        user.role.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: user.isOwner ? AppTheme.primaryGreen : AppTheme.neutralGrey,
                         ),
-                    ],
+                      ),
+                    ),
                   ),
-                );
-              },
-            ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push<bool>(
-            context,
-            MaterialPageRoute(builder: (_) => const InviteKasirPage()),
-          );
-          if (result == true) _loadUsers();
-        },
-        child: const Icon(Icons.person_add),
+                  DataCell(
+                    Text(
+                      user.email ?? '-',
+                      style: TextStyle(fontSize: 13, color: AppTheme.neutralGrey),
+                    ),
+                  ),
+                  DataCell(
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (currentUser?.isOwner == true && !user.isOwner)
+                          IconButton(
+                            icon: const Icon(Icons.pin, size: 18, color: Colors.orange),
+                            tooltip: 'Reset PIN',
+                            onPressed: () => _showResetPinDialog(user),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.edit_rounded, size: 18, color: Colors.blue),
+                          tooltip: 'Edit',
+                          onPressed: () => _showEditDialog(user),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        if (!user.isOwner)
+                          IconButton(
+                            icon: const Icon(Icons.delete_rounded, size: 18, color: AppTheme.warningRed),
+                            tooltip: 'Hapus',
+                            onPressed: () => _confirmDelete(user),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }).toList(),
+          ),
+        ),
       ),
     );
   }

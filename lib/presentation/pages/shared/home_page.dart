@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../i18n/strings.g.dart';
 import '../../../core/di/injection.dart';
@@ -41,6 +40,9 @@ import 'supplier_page.dart';
 import 'transaksi_page.dart';
 import 'user_management_page.dart';
 import 'online_order_page.dart';
+
+// ─── Entry Point ───────────────────────────────────────────────────────────────
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -58,173 +60,98 @@ class HomePage extends StatelessWidget {
           create: (context) => sl<OnlineOrderBloc>()..add(LoadPendingOnlineOrders()),
         ),
       ],
-      child: const _HomeMobileView(),
+      child: const _HomeDesktopShell(),
     );
   }
 }
 
-class _HomeMobileView extends StatefulWidget {
-  const _HomeMobileView();
+// ─── Desktop Shell (Sidebar + Content) ─────────────────────────────────────────
 
-  @override
-  State<_HomeMobileView> createState() => _HomeMobileViewState();
+enum _NavSection {
+  dashboard,
+  kasir,
+  produk,
+  transaksi,
+  laporan,
+  pembelian,
+  purchaseOrder,
+  supplier,
+  hutang,
+  onlineOrder,
+  pengguna,
+  pengaturan,
 }
 
-class _HomeMobileViewState extends State<_HomeMobileView> {
+extension _NavSectionExt on _NavSection {
+  String get label {
+    switch (this) {
+      case _NavSection.dashboard: return 'Dashboard';
+      case _NavSection.kasir: return 'Kasir';
+      case _NavSection.produk: return 'Produk';
+      case _NavSection.transaksi: return 'Riwayat Transaksi';
+      case _NavSection.laporan: return 'Laporan';
+      case _NavSection.pembelian: return 'Pembelian';
+      case _NavSection.purchaseOrder: return 'Purchase Order';
+      case _NavSection.supplier: return 'Supplier';
+      case _NavSection.hutang: return 'Hutang';
+      case _NavSection.onlineOrder: return 'Online Order';
+      case _NavSection.pengguna: return 'Pengguna';
+      case _NavSection.pengaturan: return 'Pengaturan';
+    }
+  }
+
+  IconData get icon {
+    switch (this) {
+      case _NavSection.dashboard: return Icons.dashboard_rounded;
+      case _NavSection.kasir: return Icons.point_of_sale_rounded;
+      case _NavSection.produk: return Icons.inventory_2_rounded;
+      case _NavSection.transaksi: return Icons.receipt_long_rounded;
+      case _NavSection.laporan: return Icons.bar_chart_rounded;
+      case _NavSection.pembelian: return Icons.shopping_bag_rounded;
+      case _NavSection.purchaseOrder: return Icons.assignment_rounded;
+      case _NavSection.supplier: return Icons.business_rounded;
+      case _NavSection.hutang: return Icons.account_balance_wallet_rounded;
+      case _NavSection.onlineOrder: return Icons.shopping_cart_checkout_rounded;
+      case _NavSection.pengguna: return Icons.manage_accounts_rounded;
+      case _NavSection.pengaturan: return Icons.settings_rounded;
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case _NavSection.dashboard: return AppTheme.primaryGreen;
+      case _NavSection.kasir: return AppTheme.primaryGreen;
+      case _NavSection.produk: return Colors.blue;
+      case _NavSection.transaksi: return Colors.teal;
+      case _NavSection.laporan: return Colors.purple;
+      case _NavSection.pembelian: return Colors.teal;
+      case _NavSection.purchaseOrder: return Colors.orange;
+      case _NavSection.supplier: return Colors.brown;
+      case _NavSection.hutang: return AppTheme.warningOrange;
+      case _NavSection.onlineOrder: return Colors.indigo;
+      case _NavSection.pengguna: return Colors.brown;
+      case _NavSection.pengaturan: return Colors.grey;
+    }
+  }
+}
+
+class _HomeDesktopShell extends StatefulWidget {
+  const _HomeDesktopShell();
+
+  @override
+  State<_HomeDesktopShell> createState() => _HomeDesktopShellState();
+}
+
+class _HomeDesktopShellState extends State<_HomeDesktopShell> {
+  _NavSection _activeSection = _NavSection.dashboard;
+  bool _sidebarCollapsed = false;
   bool _emailPromptShown = false;
-  final List<_QuickActionDef> _customQuickActions = [];
-  static const _prefsKey = 'custom_quick_actions';
 
-  @override
-  void initState() {
-    super.initState();
-    _loadCustomQuickActions();
-  }
+  static const double _kSidebarExpanded = 240;
+  static const double _kSidebarCollapsed = 72;
 
-  Future<void> _loadCustomQuickActions() async {
-    final prefs = await SharedPreferences.getInstance();
-    final saved = prefs.getStringList(_prefsKey) ?? [];
-    setState(() {
-      _customQuickActions.clear();
-      for (final label in saved) {
-        final match = _availableQuickActions.where((a) => a.label == label);
-        if (match.isNotEmpty) {
-          _customQuickActions.add(match.first);
-        }
-      }
-    });
-  }
-
-  Future<void> _saveCustomQuickActions() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(
-      _prefsKey,
-      _customQuickActions.map((a) => a.label).toList(),
-    );
-  }
-
-  static final List<_QuickActionDef> _availableQuickActions = [
-    _QuickActionDef('Kasir', Icons.point_of_sale, AppTheme.primaryGreen),
-    _QuickActionDef('Laporan', Icons.bar_chart, Colors.purple),
-    _QuickActionDef('Produk', Icons.inventory_2, Colors.blue),
-    _QuickActionDef('Pembelian', Icons.shopping_bag, Colors.teal),
-    _QuickActionDef('PO', Icons.receipt_long, Colors.orange),
-    _QuickActionDef('Supplier', Icons.business, Colors.brown),
-    _QuickActionDef('Hutang', Icons.account_balance_wallet, AppTheme.warningOrange),
-    _QuickActionDef('Online Order', Icons.shopping_cart_checkout, Colors.indigo),
-  ];
-
-  Widget _buildQuickActionPage(String label) {
-    switch (label) {
-      case 'Kasir':
-        return BlocProvider.value(
-          value: sl<CashierBloc>(),
-          child: const CashierPage(),
-        );
-      case 'Laporan':
-        return BlocProvider.value(
-          value: sl<LaporanBloc>(),
-          child: const LaporanPage(),
-        );
-      case 'Produk':
-        return BlocProvider.value(
-          value: sl<ProdukBloc>(),
-          child: const ProdukPage(),
-        );
-      case 'Pembelian':
-        return BlocProvider.value(
-          value: sl<PembelianBloc>(),
-          child: const PembelianPage(),
-        );
-      case 'PO':
-        return BlocProvider(
-          create: (_) => sl<PurchaseOrderBloc>(),
-          child: const PurchaseOrderPage(),
-        );
-      case 'Supplier':
-        return BlocProvider.value(
-          value: sl<SupplierBloc>(),
-          child: const SupplierPage(),
-        );
-      case 'Hutang':
-        return BlocProvider.value(
-          value: sl<HutangBloc>(),
-          child: const HutangPage(),
-        );
-      case 'Online Order':
-        return BlocProvider.value(
-          value: sl<OnlineOrderBloc>(),
-          child: const OnlineOrderPage(),
-        );
-      default:
-        return const SizedBox.shrink();
-    }
-  }
-
-  void _confirmRemoveQuickAction(_QuickActionDef action) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Aksi Cepat'),
-        content: Text('Hapus "${action.label}" dari aksi cepat?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              setState(() => _customQuickActions.removeWhere((a) => a.label == action.label));
-              _saveCustomQuickActions();
-            },
-            child: Text('Hapus', style: TextStyle(color: Theme.of(context).colorScheme.error)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAddQuickActionDialog() {
-    final available = _availableQuickActions.where(
-      (a) => !_customQuickActions.any((c) => c.label == a.label),
-    ).toList();
-
-    if (available.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Semua menu sudah ditambahkan')),
-      );
-      return;
-    }
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Tambah Aksi Cepat'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: ListView.builder(
-            shrinkWrap: true,
-            itemCount: available.length,
-            itemBuilder: (ctx, i) => ListTile(
-              leading: Icon(available[i].icon, color: available[i].color),
-              title: Text(available[i].label),
-              onTap: () {
-                Navigator.pop(ctx);
-                setState(() => _customQuickActions.add(available[i]));
-                _saveCustomQuickActions();
-              },
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
-          ),
-        ],
-      ),
-    );
+  void _navigate(_NavSection section) {
+    setState(() => _activeSection = section);
   }
 
   void _reloadDashboardAndNotif() {
@@ -233,13 +160,6 @@ class _HomeMobileViewState extends State<_HomeMobileView> {
       context.read<DashboardBloc>().add(LoadDashboardMetrics());
       context.read<OnlineOrderBloc>().add(LoadPendingOnlineOrders());
     }
-  }
-
-  void _navigateAndReload(Widget page) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => page),
-    ).then((_) => _reloadDashboardAndNotif());
   }
 
   void _showEmailDialog(BuildContext context, User user) {
@@ -283,7 +203,7 @@ class _HomeMobileViewState extends State<_HomeMobileView> {
                 );
                 return;
               }
-              if (!RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(email)) {
+              if (!RegExp(r'^[^\@\s]+@[^\@\s]+\.[^\@\s]+$').hasMatch(email)) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
                   const SnackBar(content: Text('Format email tidak valid')),
                 );
@@ -312,140 +232,64 @@ class _HomeMobileViewState extends State<_HomeMobileView> {
     );
   }
 
-  void _showLainnyaBottomSheet(BuildContext context, bool isAdmin) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) => Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(2),
-              ),
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'Menu Lainnya',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 3,
-              mainAxisSpacing: 16,
-              crossAxisSpacing: 16,
-              children: [
-                _LainnyaGridItem(
-                  icon: Icons.shopping_bag,
-                  label: 'Pembelian',
-                  color: Colors.teal,
-                  onTap: () {
-                    Navigator.pop(context);
-                    _navigateAndReload(
-                      BlocProvider.value(
-                        value: sl<PembelianBloc>(),
-                        child: const PembelianPage(),
-                      ),
-                    );
-                  },
-                ),
-                _LainnyaGridItem(
-                  icon: Icons.receipt_long,
-                  label: 'PO',
-                  color: Colors.orange,
-                  onTap: () {
-                    Navigator.pop(context);
-                    _navigateAndReload(
-                      BlocProvider(
-                        create: (_) => sl<PurchaseOrderBloc>(),
-                        child: const PurchaseOrderPage(),
-                      ),
-                    );
-                  },
-                ),
-                if (isAdmin)
-                  _LainnyaGridItem(
-                    icon: Icons.business,
-                    label: 'Supplier',
-                    color: Colors.brown,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _navigateAndReload(
-                        BlocProvider.value(
-                          value: sl<SupplierBloc>(),
-                          child: const SupplierPage(),
-                        ),
-                      );
-                    },
-                  ),
-                if (isAdmin)
-                  _LainnyaGridItem(
-                    icon: Icons.people,
-                    label: 'Hutang',
-                    color: AppTheme.warningOrange,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _navigateAndReload(
-                        BlocProvider.value(
-                          value: sl<HutangBloc>(),
-                          child: const HutangPage(),
-                        ),
-                      );
-                    },
-                  ),
-                if (isAdmin)
-                  _LainnyaGridItem(
-                    icon: Icons.bar_chart,
-                    label: 'Laporan',
-                    color: Colors.purple,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _navigateAndReload(
-                        BlocProvider.value(
-                          value: sl<LaporanBloc>(),
-                          child: const LaporanPage(),
-                        ),
-                      );
-                    },
-                  ),
-                if (isAdmin)
-                  _LainnyaGridItem(
-                    icon: Icons.manage_accounts,
-                    label: 'Pengguna',
-                    color: Colors.brown,
-                    onTap: () {
-                      Navigator.pop(context);
-                      _navigateAndReload(const UserManagementPage());
-                    },
-                  ),
-                _LainnyaGridItem(
-                  icon: Icons.settings,
-                  label: 'Pengaturan',
-                  color: Colors.indigo,
-                  onTap: () {
-                    Navigator.pop(context);
-                    _navigateAndReload(const SettingsPage());
-                  },
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-          ],
-        ),
-      ),
-    );
+  Widget _buildContent(bool isAdmin) {
+    switch (_activeSection) {
+      case _NavSection.dashboard:
+        return _DashboardPanel(
+          onNavigate: _navigate,
+          isAdmin: isAdmin,
+          onReload: _reloadDashboardAndNotif,
+        );
+      case _NavSection.kasir:
+        return BlocProvider.value(
+          value: sl<CashierBloc>(),
+          child: const CashierPage(),
+        );
+      case _NavSection.produk:
+        return BlocProvider.value(
+          value: sl<ProdukBloc>(),
+          child: const ProdukPage(),
+        );
+      case _NavSection.transaksi:
+        return BlocProvider(
+          create: (_) => sl<TransaksiBloc>(),
+          child: const TransaksiPage(),
+        );
+      case _NavSection.laporan:
+        return BlocProvider.value(
+          value: sl<LaporanBloc>(),
+          child: const LaporanPage(),
+        );
+      case _NavSection.pembelian:
+        return BlocProvider.value(
+          value: sl<PembelianBloc>(),
+          child: const PembelianPage(),
+        );
+      case _NavSection.purchaseOrder:
+        return BlocProvider(
+          create: (_) => sl<PurchaseOrderBloc>(),
+          child: const PurchaseOrderPage(),
+        );
+      case _NavSection.supplier:
+        return BlocProvider.value(
+          value: sl<SupplierBloc>(),
+          child: const SupplierPage(),
+        );
+      case _NavSection.hutang:
+        return BlocProvider.value(
+          value: sl<HutangBloc>(),
+          child: const HutangPage(),
+        );
+      case _NavSection.onlineOrder:
+        return BlocProvider.value(
+          value: sl<OnlineOrderBloc>(),
+          child: const OnlineOrderPage(),
+        );
+      case _NavSection.pengguna:
+        return const UserManagementPage();
+      case _NavSection.pengaturan:
+        return const SettingsPage();
+    }
   }
 
   @override
@@ -470,12 +314,8 @@ class _HomeMobileViewState extends State<_HomeMobileView> {
           }
           final isAdmin = role == 'owner';
 
-          final currentUser = authState is Authenticated
-              ? authState.user
-              : null;
-          if (currentUser != null &&
-              currentUser.email == null &&
-              !_emailPromptShown) {
+          final currentUser = authState is Authenticated ? authState.user : null;
+          if (currentUser != null && currentUser.email == null && !_emailPromptShown) {
             _emailPromptShown = true;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _showEmailDialog(context, currentUser);
@@ -483,643 +323,52 @@ class _HomeMobileViewState extends State<_HomeMobileView> {
           }
 
           return Scaffold(
-            appBar: AppBar(
-              backgroundColor: Colors.transparent,
-              elevation: 0,
-              scrolledUnderElevation: 0,
-              title: const Text('Tokodedy', style: TextStyle(fontWeight: FontWeight.w700, decoration: TextDecoration.none)),
-              centerTitle: false,
-              actions: [
-                BlocBuilder<NotifikasiBloc, NotifikasiState>(
-                  builder: (context, state) {
-                    int unreadCount = 0;
-                    if (state is NotifikasiLoaded) {
-                      unreadCount = state.unreadNotifikasi.length;
-                    }
+            body: Row(
+              children: [
+                // ── Sidebar ────────────────────────────────────────────
+                AnimatedContainer(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeInOut,
+                  width: _sidebarCollapsed ? _kSidebarCollapsed : _kSidebarExpanded,
+                  child: _Sidebar(
+                    collapsed: _sidebarCollapsed,
+                    activeSection: _activeSection,
+                    username: username,
+                    role: role,
+                    isAdmin: isAdmin,
+                    onNavigate: _navigate,
+                    onToggleCollapse: () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
+                    onLogout: () => context.read<AuthBloc>().add(LogoutEvent()),
+                  ),
+                ),
 
-                    return Stack(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.notifications),
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => BlocProvider.value(
-                                  value: context.read<NotifikasiBloc>(),
-                                  child: const NotifikasiPage(),
-                                ),
-                              ),
-                            ).then((_) {
-                              if (context.mounted) {
-                                context.read<NotifikasiBloc>().add(LoadNotifikasi());
-                              }
-                            });
-                          },
-                        ),
-                        if (unreadCount > 0)
-                          Positioned(
-                            right: 8,
-                            top: 8,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: AppTheme.warningRed,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                              constraints: const BoxConstraints(
-                                minWidth: 16,
-                                minHeight: 16,
-                              ),
-                              child: Text(
-                                '$unreadCount',
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ),
+                // ── Content Area ───────────────────────────────────────
+                Expanded(
+                  child: Column(
+                    children: [
+                      // Top Bar
+                      _TopBar(
+                        activeSection: _activeSection,
+                        onReload: _reloadDashboardAndNotif,
+                      ),
+                      // Page Content
+                      Expanded(
+                        child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 180),
+                          transitionBuilder: (child, anim) => FadeTransition(
+                            opacity: anim,
+                            child: child,
                           ),
-                      ],
-                    );
-                  },
+                          child: KeyedSubtree(
+                            key: ValueKey(_activeSection),
+                            child: _buildContent(isAdmin),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
-            ),
-            body: RefreshIndicator(
-              onRefresh: () async {
-                _reloadDashboardAndNotif();
-              },
-              child: CustomScrollView(
-                slivers: [
-                  SliverPadding(
-                    padding: const EdgeInsets.all(16),
-                    sliver: SliverList(
-                      delegate: SliverChildListDelegate([
-                        // Greeting
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                '${t.home.welcome} $username! \u{1f44b}',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Flexible(
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                                decoration: BoxDecoration(
-                                  color: AppTheme.primaryGreen.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(9999),
-                                ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
-                                        color: AppTheme.primaryGreen,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                    Flexible(
-                                      child: Text(
-                                        'Toko',
-                                        style: const TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: AppTheme.primaryGreen,
-                                        ),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Dashboard Summary Card
-                        BlocBuilder<DashboardBloc, DashboardState>(
-                          builder: (context, state) {
-                            if (state is DashboardLoading) {
-                              return const Center(child: CircularProgressIndicator());
-                            } else if (state is DashboardLoaded) {
-                              final formatCurrency = NumberFormat.currency(
-                                locale: 'id_ID',
-                                symbol: 'Rp ',
-                                decimalDigits: 0,
-                              );
-                              final isDark = Theme.of(context).brightness == Brightness.dark;
-                              return Container(
-                                padding: const EdgeInsets.all(20),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: isDark 
-                                      ? [const Color(0xFF1a4d2e), const Color(0xFF0f3320), const Color(0xFF0d0e0e)]
-                                      : [const Color(0xFF22c55e), const Color(0xFF16a34a), const Color(0xFF14532d)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                  borderRadius: BorderRadius.circular(20),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      children: [
-                                        const Icon(Icons.trending_up, color: Colors.white70, size: 20),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          t.dashboard.omzet_today,
-                                          style: TextStyle(
-                                            color: Colors.white.withValues(alpha: 0.9),
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w600,
-                                            letterSpacing: 1.2,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      formatCurrency.format(state.metrics.omzet),
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: isDark ? 36 : 32,
-                                        fontWeight: isDark ? FontWeight.w700 : FontWeight.w800,
-                                        letterSpacing: -1,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 20),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                            decoration: BoxDecoration(
-                                              color: Colors.black.withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  t.dashboard.transaction,
-                                                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  '${state.metrics.transaksi}',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: Container(
-                                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-                                            decoration: BoxDecoration(
-                                              color: Colors.black.withValues(alpha: 0.15),
-                                              borderRadius: BorderRadius.circular(12),
-                                            ),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  t.dashboard.sold,
-                                                  style: const TextStyle(color: Colors.white70, fontSize: 12),
-                                                ),
-                                                const SizedBox(height: 4),
-                                                Text(
-                                                  '${state.metrics.terjual}',
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
-                        const SizedBox(height: 24),
-
-                        // Online Orders
-                        BlocBuilder<OnlineOrderBloc, OnlineOrderState>(
-                          builder: (context, state) {
-                            if (state is OnlineOrderLoaded && state.orders.isNotEmpty) {
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text(
-                                    'Pesanan Online Baru',
-                                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                  ),
-                                  const SizedBox(height: 12),
-                                  ListView.builder(
-                                    shrinkWrap: true,
-                                    physics: const NeverScrollableScrollPhysics(),
-                                    itemCount: state.orders.length,
-                                    itemBuilder: (context, index) {
-                                      final order = state.orders[index];
-                                      final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-                                      return Card(
-                                        margin: const EdgeInsets.only(bottom: 8),
-                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                        child: ListTile(
-                                          leading: const CircleAvatar(
-                                            backgroundColor: Colors.orange,
-                                            child: Icon(Icons.shopping_cart, color: Colors.white),
-                                          ),
-                                          title: Text(order.namaCustomer, style: const TextStyle(fontWeight: FontWeight.bold)),
-                                          subtitle: Text('Total: ${formatCurrency.format(order.totalHarga)} • ${order.metodePengiriman.toUpperCase()}'),
-                                          trailing: ElevatedButton(
-                                            onPressed: () {
-                                              // Accept order (ubah status dari pending ke processing)
-                                              context.read<OnlineOrderBloc>().add(ProcessOnlineOrder(order.id, 'processing'));
-                                              ScaffoldMessenger.of(context).showSnackBar(
-                                                SnackBar(content: Text('Pesanan dari ${order.namaCustomer} diproses')),
-                                              );
-                                            },
-                                            style: ElevatedButton.styleFrom(
-                                              backgroundColor: AppTheme.primaryGreen,
-                                              foregroundColor: Colors.white,
-                                            ),
-                                            child: const Text('Proses'),
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                  const SizedBox(height: 24),
-                                ],
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
-
-                        // Quick Actions
-                        Text(
-                          t.quick_actions.title,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        const SizedBox(height: 12),
-                        if (_customQuickActions.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: Text(
-                              'Tap + untuk menambahkan aksi cepat',
-                              style: TextStyle(fontSize: 12, color: AppTheme.neutralGrey),
-                            ),
-                          ),
-                        GridView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          padding: EdgeInsets.zero,
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 4,
-                            crossAxisSpacing: 8,
-                            mainAxisSpacing: 16,
-                            childAspectRatio: 0.8,
-                          ),
-                          itemCount: _customQuickActions.length + 1,
-                          itemBuilder: (context, index) {
-                            if (index == _customQuickActions.length) {
-                              return _QuickActionCard(
-                                icon: Icons.add,
-                                label: t.quick_actions.add,
-                                color: AppTheme.neutralGrey,
-                                onTap: _showAddQuickActionDialog,
-                              );
-                            }
-                            final a = _customQuickActions[index];
-                            return _QuickActionCard(
-                              icon: a.icon,
-                              label: a.label,
-                              color: a.color,
-                              onTap: () => _navigateAndReload(_buildQuickActionPage(a.label)),
-                              onLongPress: () => _confirmRemoveQuickAction(a),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 24),
-                        
-                        // Stok Menipis & Transaksi Terakhir (from DashboardBloc)
-                        BlocBuilder<DashboardBloc, DashboardState>(
-                          builder: (context, state) {
-                            if (state is DashboardLoaded) {
-                              final isDark = Theme.of(context).brightness == Brightness.dark;
-                              final borderColor = isDark ? Theme.of(context).colorScheme.outline : const Color(0xFFE5EAE5);
-                              final cardRadius = isDark ? 20.0 : 14.0;
-                              final borderWidth = isDark ? 1.0 : 1.5;
-
-                              return Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Stok Menipis
-                                  if (state.metrics.stokMenipis.isNotEmpty) ...[
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          t.dashboard.low_stock,
-                                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            _navigateAndReload(
-                                              BlocProvider.value(
-                                                value: sl<ProdukBloc>(),
-                                                child: const ProdukPage(),
-                                              ),
-                                            );
-                                          },
-                                          style: TextButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                            minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                          ),
-                                          child: Text(t.dashboard.see_all, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: isDark ? Theme.of(context).colorScheme.surfaceContainer : Colors.white,
-                                        borderRadius: BorderRadius.circular(cardRadius),
-                                        border: Border.all(color: borderColor, width: borderWidth),
-                                      ),
-                                      child: ListView.separated(
-                                        shrinkWrap: true,
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        itemCount: state.metrics.stokMenipis.length,
-                                        separatorBuilder: (context, index) => Divider(
-                                          height: 1, 
-                                          thickness: isDark ? 1 : 1.5,
-                                          color: isDark ? Theme.of(context).colorScheme.surfaceContainerLow : const Color(0xFFEEEEEE),
-                                        ),
-                                        itemBuilder: (context, index) {
-                                          final item = state.metrics.stokMenipis[index];
-                                          final rowColor = isDark 
-                                            ? (index.isOdd ? Theme.of(context).colorScheme.surfaceContainerLow : Colors.transparent)
-                                            : Colors.transparent;
-                                          return Container(
-                                            color: rowColor,
-                                            child: ListTile(
-                                              leading: Container(
-                                                padding: const EdgeInsets.all(8),
-                                                decoration: BoxDecoration(
-                                                  color: isDark ? const Color(0xFF93000a) : const Color(0xFFef4444).withValues(alpha: 0.1),
-                                                  borderRadius: BorderRadius.circular(8),
-                                                ),
-                                                child: Icon(Icons.warning_rounded, color: isDark ? const Color(0xFFffb4ab) : const Color(0xFFef4444)),
-                                              ),
-                                              title: Text(item.nama, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                                              trailing: Container(
-                                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                                decoration: BoxDecoration(
-                                                  color: isDark ? const Color(0xFFffb4ab) : const Color(0xFFef4444),
-                                                  borderRadius: BorderRadius.circular(isDark ? 9999 : 8),
-                                                ),
-                                                child: Text(
-                                                  '${t.dashboard.remaining} ${item.stok}',
-                                                  style: TextStyle(
-                                                    color: isDark ? const Color(0xFF93000a) : Colors.white,
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 12,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(height: 24),
-                                  ],
-
-                                  // Update Harga Barang
-                                  if (state.metrics.updateHargaTerakhir.isNotEmpty) ...[
-                                    Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          t.price_update.title,
-                                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                                        ),
-                                        TextButton(
-                                          onPressed: () {
-                                            _navigateAndReload(
-                                              BlocProvider(
-                                                create: (_) => sl<RiwayatHargaBloc>(),
-                                                child: const RiwayatHargaPage(),
-                                              ),
-                                            );
-                                          },
-                                          style: TextButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                            minimumSize: Size.zero,
-                                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                                          ),
-                                          child: Text(t.dashboard.see_all, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 12),
-                                    Container(
-                                      decoration: BoxDecoration(
-                                        color: isDark ? Theme.of(context).colorScheme.surfaceContainer : Colors.white,
-                                        borderRadius: BorderRadius.circular(cardRadius),
-                                        border: Border.all(color: borderColor, width: borderWidth),
-                                      ),
-                                      child: ListView.separated(
-                                        shrinkWrap: true,
-                                        physics: const NeverScrollableScrollPhysics(),
-                                        itemCount: state.metrics.updateHargaTerakhir.length,
-                                        separatorBuilder: (context, index) => Divider(
-                                          height: 1, 
-                                          thickness: isDark ? 1 : 1.5,
-                                          color: isDark ? Theme.of(context).colorScheme.surfaceContainerLow : const Color(0xFFEEEEEE),
-                                        ),
-                                        itemBuilder: (context, index) {
-                                          final riwayat = state.metrics.updateHargaTerakhir[index];
-                                          final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
-                                          final time = DateFormat('HH:mm').format(riwayat.createdAt);
-                                          
-                                          final isHargaJualNaik = riwayat.hargaJualBaru > riwayat.hargaJualLama;
-                                          final isHargaJualTurun = riwayat.hargaJualBaru < riwayat.hargaJualLama;
-                                          final isHargaBeliNaik = riwayat.hargaBeliBaru > riwayat.hargaBeliLama;
-                                          final isHargaBeliTurun = riwayat.hargaBeliBaru < riwayat.hargaBeliLama;
-
-                                          bool isNaik = isHargaJualNaik || (!isHargaJualTurun && isHargaBeliNaik);
-                                          bool isTurun = isHargaJualTurun || (!isHargaJualNaik && isHargaBeliTurun);
-                                          
-                                          Color iconColor = Colors.blue;
-                                          IconData iconData = Icons.price_change;
-                                          if (isNaik) {
-                                            iconColor = AppTheme.error;
-                                            iconData = Icons.trending_up; 
-                                          } else if (isTurun) {
-                                            iconColor = AppTheme.primaryGreen;
-                                            iconData = Icons.trending_down;
-                                          }
-
-                                          return ListTile(
-                                            leading: Container(
-                                              padding: const EdgeInsets.all(8),
-                                              decoration: BoxDecoration(
-                                                color: iconColor.withValues(alpha: 0.1),
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: Icon(iconData, color: iconColor),
-                                            ),
-                                            title: Text(
-                                              riwayat.produkNama ?? t.price_update.product_deleted,
-                                              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
-                                            ),
-                                            subtitle: Text(time, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-                                            trailing: Column(
-                                              mainAxisAlignment: MainAxisAlignment.center,
-                                              crossAxisAlignment: CrossAxisAlignment.end,
-                                              children: [
-                                                Text(
-                                                  formatCurrency.format(riwayat.hargaJualBaru),
-                                                  style: const TextStyle(
-                                                    fontWeight: FontWeight.bold,
-                                                    fontSize: 14,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  formatCurrency.format(riwayat.hargaJualLama),
-                                                  style: const TextStyle(
-                                                    fontSize: 11,
-                                                    color: Colors.grey,
-                                                    decoration: TextDecoration.lineThrough,
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    const SizedBox(height: 24),
-                                  ],
-                                ],
-                              );
-                            }
-                            return const SizedBox.shrink();
-                          },
-                        ),
-                        
-                        const SizedBox(height: 80),
-                      ]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-            floatingActionButton: Container(
-              height: 64,
-              width: 64,
-              margin: const EdgeInsets.only(top: 24),
-              child: FloatingActionButton(
-                onPressed: () {
-                  _navigateAndReload(
-                    BlocProvider.value(
-                      value: sl<CashierBloc>(),
-                      child: const CashierPage(),
-                    ),
-                  );
-                },
-                backgroundColor: AppTheme.primaryGreen,
-                elevation: 4,
-                shape: const CircleBorder(),
-                child: const Icon(Icons.shopping_cart, color: Colors.white, size: 32),
-              ),
-            ),
-            bottomNavigationBar: BottomAppBar(
-              shape: const CircularNotchedRectangle(),
-              notchMargin: 8,
-              clipBehavior: Clip.antiAlias,
-              child: SizedBox(
-                height: kBottomNavigationBarHeight,
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    _BottomNavItem(
-                      icon: Icons.home,
-                      label: 'Beranda',
-                      isActive: true,
-                      onTap: () {},
-                    ),
-                    _BottomNavItem(
-                      icon: Icons.inventory_2,
-                      label: 'Produk',
-                      isActive: false,
-                      onTap: () {
-                        _navigateAndReload(
-                          BlocProvider.value(
-                            value: sl<ProdukBloc>(),
-                            child: const ProdukPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(width: 48),
-                    _BottomNavItem(
-                      icon: Icons.receipt_long,
-                      label: 'Riwayat',
-                      isActive: false,
-                      onTap: () {
-                        _navigateAndReload(
-                          BlocProvider(
-                            create: (_) => sl<TransaksiBloc>(),
-                            child: const TransaksiPage(),
-                          ),
-                        );
-                      },
-                    ),
-                    _BottomNavItem(
-                      icon: Icons.menu,
-                      label: 'Lainnya',
-                      isActive: false,
-                      onTap: () => _showLainnyaBottomSheet(context, isAdmin),
-                    ),
-                  ],
-                ),
-              ),
             ),
           );
         },
@@ -1128,145 +377,868 @@ class _HomeMobileViewState extends State<_HomeMobileView> {
   }
 }
 
-class _QuickActionDef {
-  final String label;
-  final IconData icon;
-  final Color color;
-  const _QuickActionDef(this.label, this.icon, this.color);
+// ─── Sidebar Widget ─────────────────────────────────────────────────────────────
+
+class _Sidebar extends StatelessWidget {
+  final bool collapsed;
+  final _NavSection activeSection;
+  final String username;
+  final String role;
+  final bool isAdmin;
+  final void Function(_NavSection) onNavigate;
+  final VoidCallback onToggleCollapse;
+  final VoidCallback onLogout;
+
+  const _Sidebar({
+    required this.collapsed,
+    required this.activeSection,
+    required this.username,
+    required this.role,
+    required this.isAdmin,
+    required this.onNavigate,
+    required this.onToggleCollapse,
+    required this.onLogout,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? const Color(0xFF111827) : const Color(0xFF0f172a);
+
+
+    // Menu groups
+    final kasirItems = [_NavSection.kasir, _NavSection.transaksi];
+    final stokItems = [_NavSection.produk, _NavSection.pembelian, _NavSection.purchaseOrder, _NavSection.supplier];
+    final keuanganItems = [_NavSection.laporan, _NavSection.hutang];
+    final onlineItems = [_NavSection.onlineOrder];
+    final adminItems = isAdmin ? [_NavSection.pengguna] : <_NavSection>[];
+    final settingItems = [_NavSection.pengaturan];
+
+    return Container(
+      color: bg,
+      child: Column(
+        children: [
+          // Logo + Collapse Toggle
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            child: Row(
+              children: [
+                Container(
+                  width: 40,
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryGreen,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 22),
+                ),
+                if (!collapsed) ...[
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Tokodedy PC',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                        letterSpacing: -0.3,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+                IconButton(
+                  onPressed: onToggleCollapse,
+                  icon: Icon(
+                    collapsed ? Icons.chevron_right : Icons.chevron_left,
+                    color: Colors.white54,
+                    size: 20,
+                  ),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+          ),
+
+          const Divider(color: Colors.white12, height: 1),
+          const SizedBox(height: 8),
+
+          // Nav Items
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              children: [
+                _SidebarItem(section: _NavSection.dashboard, active: activeSection == _NavSection.dashboard, collapsed: collapsed, onTap: () => onNavigate(_NavSection.dashboard)),
+                const SizedBox(height: 4),
+                if (!collapsed) _SidebarLabel('KASIR'),
+                ...kasirItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))),
+                const SizedBox(height: 4),
+                if (!collapsed) _SidebarLabel('STOK & PEMBELIAN'),
+                ...stokItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))),
+                if (isAdmin) ...[
+                  const SizedBox(height: 4),
+                  if (!collapsed) _SidebarLabel('KEUANGAN'),
+                  ...keuanganItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))),
+                ],
+                const SizedBox(height: 4),
+                if (!collapsed) _SidebarLabel('ONLINE'),
+                ...onlineItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))),
+                if (adminItems.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  if (!collapsed) _SidebarLabel('ADMIN'),
+                  ...adminItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))),
+                ],
+              ],
+            ),
+          ),
+
+          const Divider(color: Colors.white12, height: 1),
+
+          // Settings + User
+          Padding(
+            padding: const EdgeInsets.all(8),
+            child: Column(
+              children: [
+                ...settingItems.map((s) => _SidebarItem(
+                  section: s,
+                  active: activeSection == s,
+                  collapsed: collapsed,
+                  onTap: () => onNavigate(s),
+                )),
+                const SizedBox(height: 4),
+                // User info + logout
+                InkWell(
+                  onTap: onLogout,
+                  borderRadius: BorderRadius.circular(10),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppTheme.primaryGreen.withValues(alpha: 0.2),
+                          child: Text(
+                            username.isNotEmpty ? username[0].toUpperCase() : '?',
+                            style: const TextStyle(color: AppTheme.primaryGreen, fontWeight: FontWeight.bold, fontSize: 14),
+                          ),
+                        ),
+                        if (!collapsed) ...[
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  username,
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  role.toUpperCase(),
+                                  style: const TextStyle(color: Colors.white38, fontSize: 10, letterSpacing: 0.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.logout_rounded, color: Colors.white38, size: 18),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
-class _QuickActionCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
+class _SidebarItem extends StatefulWidget {
+  final _NavSection section;
+  final bool active;
+  final bool collapsed;
   final VoidCallback onTap;
-  final VoidCallback? onLongPress;
 
-  const _QuickActionCard({
-    required this.icon,
-    required this.label,
-    required this.color,
+  const _SidebarItem({
+    required this.section,
+    required this.active,
+    required this.collapsed,
     required this.onTap,
-    this.onLongPress,
+  });
+
+  @override
+  State<_SidebarItem> createState() => _SidebarItemState();
+}
+
+class _SidebarItemState extends State<_SidebarItem> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final active = widget.active;
+    final section = widget.section;
+
+    return Tooltip(
+      message: widget.collapsed ? section.label : '',
+      preferBelow: false,
+      child: MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: GestureDetector(
+          onTap: widget.onTap,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 150),
+            margin: const EdgeInsets.symmetric(vertical: 2),
+            padding: EdgeInsets.symmetric(horizontal: widget.collapsed ? 16 : 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: active
+                  ? section.color.withValues(alpha: 0.18)
+                  : _hovered
+                      ? Colors.white.withValues(alpha: 0.05)
+                      : Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              border: active
+                  ? Border.all(color: section.color.withValues(alpha: 0.35), width: 1)
+                  : null,
+            ),
+            child: Row(
+              mainAxisAlignment: widget.collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+              children: [
+                Icon(
+                  section.icon,
+                  size: 20,
+                  color: active ? section.color : Colors.white54,
+                ),
+                if (!widget.collapsed) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      section.label,
+                      style: TextStyle(
+                        color: active ? Colors.white : Colors.white70,
+                        fontWeight: active ? FontWeight.w600 : FontWeight.normal,
+                        fontSize: 13.5,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarLabel extends StatelessWidget {
+  final String text;
+  const _SidebarLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 12, top: 8, bottom: 4),
+      child: Text(
+        text,
+        style: const TextStyle(
+          color: Colors.white24,
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Top Bar ────────────────────────────────────────────────────────────────────
+
+class _TopBar extends StatefulWidget {
+  final _NavSection activeSection;
+  final VoidCallback onReload;
+
+  const _TopBar({required this.activeSection, required this.onReload});
+
+  @override
+  State<_TopBar> createState() => _TopBarState();
+}
+
+class _TopBarState extends State<_TopBar> {
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      height: 56,
+      padding: const EdgeInsets.symmetric(horizontal: 24),
+      decoration: BoxDecoration(
+        color: isDark ? Theme.of(context).colorScheme.surface : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? Colors.white12 : const Color(0xFFE5E7EB),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(
+            widget.activeSection.label,
+            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 18),
+          ),
+          const Spacer(),
+          // Refresh
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded, size: 20),
+            tooltip: 'Refresh',
+            onPressed: widget.onReload,
+          ),
+          const SizedBox(width: 4),
+          // Notifikasi
+          BlocBuilder<NotifikasiBloc, NotifikasiState>(
+            builder: (context, state) {
+              int unread = 0;
+              if (state is NotifikasiLoaded) unread = state.unreadNotifikasi.length;
+              return Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_rounded, size: 20),
+                    tooltip: 'Notifikasi',
+                    onPressed: () => _showNotifikasiDropdown(context, unread),
+                  ),
+                  if (unread > 0)
+                    Positioned(
+                      right: 6,
+                      top: 6,
+                      child: Container(
+                        padding: const EdgeInsets.all(3),
+                        decoration: const BoxDecoration(
+                          color: AppTheme.warningRed,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Text(
+                          '$unread',
+                          style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showNotifikasiDropdown(BuildContext context, int unread) {
+    showDialog(
+      context: context,
+      barrierColor: Colors.transparent,
+      builder: (ctx) => Align(
+        alignment: Alignment.topRight,
+        child: Padding(
+          padding: const EdgeInsets.only(top: 60, right: 16),
+          child: Material(
+            elevation: 12,
+            borderRadius: BorderRadius.circular(12),
+            clipBehavior: Clip.antiAlias,
+            child: SizedBox(
+              width: 360,
+              height: 480,
+              child: Column(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border(bottom: BorderSide(color: Colors.black.withValues(alpha: 0.08))),
+                      color: Theme.of(context).colorScheme.surface,
+                    ),
+                    child: Row(
+                      children: [
+                        const Text('Notifikasi',
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                        if (unread > 0)
+                          Container(
+                            margin: const EdgeInsets.only(left: 8),
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppTheme.warningRed,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text('$unread baru',
+                                style: const TextStyle(
+                                    color: Colors.white, fontSize: 11, fontWeight: FontWeight.w600)),
+                          ),
+                        const Spacer(),
+                        TextButton.icon(
+                          onPressed: () =>
+                              context.read<NotifikasiBloc>().add(MarkAllNotifikasiAsRead()),
+                          icon: const Icon(Icons.done_all, size: 15),
+                          label: const Text('Tandai Dibaca', style: TextStyle(fontSize: 12)),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            minimumSize: Size.zero,
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 18),
+                          onPressed: () => Navigator.pop(ctx),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: BlocProvider.value(
+                      value: context.read<NotifikasiBloc>(),
+                      child: const NotifikasiPage(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+// ─── Dashboard Panel ────────────────────────────────────────────────────────────
+
+class _DashboardPanel extends StatelessWidget {
+  final void Function(_NavSection) onNavigate;
+  final bool isAdmin;
+  final VoidCallback onReload;
+
+  const _DashboardPanel({
+    required this.onNavigate,
+    required this.isAdmin,
+    required this.onReload,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Welcome Row
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '${t.home.welcome} 👋',
+                      style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700, letterSpacing: -0.5),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      DateFormat('EEEE, dd MMMM yyyy', 'id').format(DateTime.now()),
+                      style: TextStyle(color: AppTheme.neutralGrey, fontSize: 14),
+                    ),
+                  ],
+                ),
+              ),
+              // Kasir CTA
+              ElevatedButton.icon(
+                onPressed: () => onNavigate(_NavSection.kasir),
+                icon: const Icon(Icons.point_of_sale_rounded, size: 18),
+                label: const Text('Buka Kasir', style: TextStyle(fontWeight: FontWeight.w600)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryGreen,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Dashboard Metrics Cards
+          BlocBuilder<DashboardBloc, DashboardState>(
+            builder: (context, state) {
+              if (state is DashboardLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state is DashboardLoaded) {
+                return Column(
+                  children: [
+                    // Metric Cards Row
+                    Row(
+                      children: [
+                        _MetricCard(
+                          label: t.dashboard.omzet_today,
+                          value: formatCurrency.format(state.metrics.omzet),
+                          icon: Icons.trending_up_rounded,
+                          color: AppTheme.primaryGreen,
+                          gradient: isDark
+                              ? [const Color(0xFF1a4d2e), const Color(0xFF0f3320)]
+                              : [const Color(0xFF22c55e), const Color(0xFF15803d)],
+                          isHighlight: true,
+                        ),
+                        const SizedBox(width: 16),
+                        _MetricCard(
+                          label: t.dashboard.transaction,
+                          value: '${state.metrics.transaksi}',
+                          icon: Icons.receipt_long_rounded,
+                          color: Colors.blue,
+                          gradient: null,
+                        ),
+                        const SizedBox(width: 16),
+                        _MetricCard(
+                          label: t.dashboard.sold,
+                          value: '${state.metrics.terjual}',
+                          icon: Icons.shopping_bag_rounded,
+                          color: Colors.orange,
+                          gradient: null,
+                        ),
+                        const SizedBox(width: 16),
+                        _MetricCard(
+                          label: 'Stok Menipis',
+                          value: '${state.metrics.stokMenipis.length}',
+                          icon: Icons.warning_rounded,
+                          color: AppTheme.warningRed,
+                          gradient: null,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+
+                    // Two-column: Stok Menipis + Online Order
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Stok Menipis
+                        Expanded(
+                          child: _DashboardCard(
+                            title: t.dashboard.low_stock,
+                            icon: Icons.warning_rounded,
+                            color: AppTheme.warningRed,
+                            onViewAll: () => onNavigate(_NavSection.produk),
+                            child: state.metrics.stokMenipis.isEmpty
+                                ? const _EmptyState('Semua stok dalam kondisi cukup ✅')
+                                : ListView.separated(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: state.metrics.stokMenipis.length.clamp(0, 8),
+                                    separatorBuilder: (ctx, idx) => const Divider(height: 1),
+                                    itemBuilder: (_, i) {
+                                      final p = state.metrics.stokMenipis[i];
+                                      return ListTile(
+                                        dense: true,
+                                        leading: Container(
+                                          padding: const EdgeInsets.all(6),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.warningRed.withValues(alpha: 0.1),
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: const Icon(Icons.warning_rounded, color: AppTheme.warningRed, size: 16),
+                                        ),
+                                        title: Text(p.nama, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+                                        trailing: Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: AppTheme.warningRed,
+                                            borderRadius: BorderRadius.circular(8),
+                                          ),
+                                          child: Text(
+                                            'Sisa ${p.stok}',
+                                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+
+                        // Update Harga Terakhir
+                        Expanded(
+                          child: _DashboardCard(
+                            title: t.price_update.title,
+                            icon: Icons.price_change_rounded,
+                            color: Colors.blue,
+                            onViewAll: () => showDialog(
+                              context: context,
+                              builder: (_) => Dialog(
+                                clipBehavior: Clip.antiAlias,
+                                child: SizedBox(
+                                  width: 400,
+                                  height: 500,
+                                  child: Scaffold(
+                                    appBar: AppBar(title: const Text('Riwayat Harga')),
+                                    body: BlocProvider(
+                                      create: (_) => sl<RiwayatHargaBloc>(),
+                                      child: const RiwayatHargaPage(),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                            child: state.metrics.updateHargaTerakhir.isEmpty
+                                ? const _EmptyState('Belum ada perubahan harga hari ini')
+                                : ListView.separated(
+                                    shrinkWrap: true,
+                                    physics: const NeverScrollableScrollPhysics(),
+                                    itemCount: state.metrics.updateHargaTerakhir.length.clamp(0, 8),
+                                    separatorBuilder: (ctx, idx) => const Divider(height: 1),
+                                    itemBuilder: (_, i) {
+                                      final r = state.metrics.updateHargaTerakhir[i];
+                                      final isNaik = r.hargaJualBaru > r.hargaJualLama;
+                                      return ListTile(
+                                        dense: true,
+                                        leading: Icon(
+                                          isNaik ? Icons.trending_up_rounded : Icons.trending_down_rounded,
+                                          color: isNaik ? AppTheme.warningRed : AppTheme.primaryGreen,
+                                          size: 18,
+                                        ),
+                                        title: Text(
+                                          r.produkNama ?? t.price_update.product_deleted,
+                                          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+                                        ),
+                                        trailing: Text(
+                                          formatCurrency.format(r.hargaJualBaru),
+                                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+
+          // Online Orders Pending
+          const SizedBox(height: 24),
+          BlocBuilder<OnlineOrderBloc, OnlineOrderState>(
+            builder: (context, state) {
+              if (state is OnlineOrderLoaded && state.orders.isNotEmpty) {
+                return _DashboardCard(
+                  title: 'Pesanan Online Baru (${state.orders.length})',
+                  icon: Icons.shopping_cart_checkout_rounded,
+                  color: Colors.indigo,
+                  onViewAll: () => onNavigate(_NavSection.onlineOrder),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    itemCount: state.orders.length.clamp(0, 5),
+                    itemBuilder: (context, i) {
+                      final order = state.orders[i];
+                      return ListTile(
+                        dense: true,
+                        leading: const CircleAvatar(
+                          radius: 16,
+                          backgroundColor: Colors.orange,
+                          child: Icon(Icons.person, color: Colors.white, size: 16),
+                        ),
+                        title: Text(order.namaCustomer, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                        subtitle: Text(
+                          'Rp ${formatCurrency.format(order.totalHarga)} • ${order.metodePengiriman.toUpperCase()}',
+                          style: const TextStyle(fontSize: 11),
+                        ),
+                        trailing: ElevatedButton(
+                          onPressed: () {
+                            context.read<OnlineOrderBloc>().add(ProcessOnlineOrder(order.id, 'processing'));
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primaryGreen,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            textStyle: const TextStyle(fontSize: 12),
+                          ),
+                          child: const Text('Proses'),
+                        ),
+                      );
+                    },
+                  ),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Dashboard Helpers ──────────────────────────────────────────────────────────
+
+class _MetricCard extends StatelessWidget {
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color color;
+  final List<Color>? gradient;
+  final bool isHighlight;
+
+  const _MetricCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+    this.gradient,
+    this.isHighlight = false,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return InkWell(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      borderRadius: BorderRadius.circular(18),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 58,
-            height: 58,
-            decoration: BoxDecoration(
-              color: isDark ? color.withValues(alpha: 0.12) : color.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(
-                color: isDark ? color.withValues(alpha: 0.2) : color.withValues(alpha: 0.25), 
-                width: 1,
+    if (isHighlight && gradient != null) {
+      return Expanded(
+        flex: 2,
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: gradient!,
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                Icon(icon, color: Colors.white70, size: 18),
+                const SizedBox(width: 8),
+                Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+              ]),
+              const SizedBox(height: 10),
+              Text(value, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -1)),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: isDark ? Theme.of(context).colorScheme.surfaceContainer : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isDark ? Colors.white12 : const Color(0xFFE5E7EB),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: Icon(icon, color: color, size: 18),
             ),
-            child: Center(
-              child: Icon(icon, color: color, size: 24),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            label.toUpperCase(),
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w700,
-              color: isDark ? const Color(0xFF737373) : const Color(0xFF666666),
-              letterSpacing: 0.3,
-            ),
-            textAlign: TextAlign.center,
-          ),
-        ],
+            const SizedBox(height: 12),
+            Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            const SizedBox(height: 4),
+            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _BottomNavItem extends StatelessWidget {
+class _DashboardCard extends StatelessWidget {
+  final String title;
   final IconData icon;
-  final String label;
-  final bool isActive;
-  final VoidCallback onTap;
-
-  const _BottomNavItem({
-    required this.icon,
-    required this.label,
-    required this.isActive,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final color = isActive ? AppTheme.primaryGreen : Colors.grey;
-    return InkWell(
-      onTap: onTap,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(icon, color: color, size: 24),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontSize: 10,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LainnyaGridItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
   final Color color;
-  final VoidCallback onTap;
+  final Widget child;
+  final VoidCallback? onViewAll;
 
-  const _LainnyaGridItem({
+  const _DashboardCard({
+    required this.title,
     required this.icon,
-    required this.label,
     required this.color,
-    required this.onTap,
+    required this.child,
+    this.onViewAll,
   });
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? Theme.of(context).colorScheme.surfaceContainer : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE5E7EB)),
+      ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-               color: color.withValues(alpha: 0.1),
-               shape: BoxShape.circle,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 8, 12),
+            child: Row(
+              children: [
+                Icon(icon, color: color, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                ),
+                if (onViewAll != null)
+                  TextButton(
+                    onPressed: onViewAll,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      minimumSize: Size.zero,
+                    ),
+                    child: const Text('Lihat Semua', style: TextStyle(fontSize: 12)),
+                  ),
+              ],
             ),
-            child: Icon(icon, color: color, size: 28),
           ),
-          const SizedBox(height: 8),
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-            textAlign: TextAlign.center,
-          ),
+          const Divider(height: 1),
+          child,
         ],
+      ),
+    );
+  }
+}
+
+class _EmptyState extends StatelessWidget {
+  final String message;
+  const _EmptyState(this.message);
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Center(
+        child: Text(message, style: const TextStyle(color: Colors.grey, fontSize: 13)),
       ),
     );
   }

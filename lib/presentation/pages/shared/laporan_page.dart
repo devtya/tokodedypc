@@ -19,39 +19,24 @@ class LaporanPage extends StatefulWidget {
   State<LaporanPage> createState() => _LaporanPageState();
 }
 
-class _LaporanPageState extends State<LaporanPage>
-    with SingleTickerProviderStateMixin {
-  final _currency = NumberFormat.currency(
-    locale: 'id',
-    symbol: 'Rp',
-    decimalDigits: 0,
-  );
+enum _LaporanTab { ringkasan, labaRugi, terlaris, hutang, arusKas, stok }
+
+class _LaporanPageState extends State<LaporanPage> {
+  final _currency = NumberFormat.currency(locale: 'id', symbol: 'Rp', decimalDigits: 0);
   final _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
   final _dayFormat = DateFormat('EEEE, dd MMMM yyyy', 'id');
 
-  late TabController _tabController;
+  _LaporanTab _activeTab = _LaporanTab.ringkasan;
   DateTime _filterStart = DateTime.now().subtract(const Duration(days: 30));
   DateTime _filterEnd = DateTime.now();
 
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 6, vsync: this);
-    _tabController.addListener(() {
-      if (!_tabController.indexIsChanging) {
-        context.read<LaporanBloc>().add(LoadLaporan(
-              tabIndex: _tabController.index,
-              startDate: _filterStart,
-              endDate: _filterEnd,
-            ));
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
+  void _setTab(_LaporanTab tab) {
+    setState(() => _activeTab = tab);
+    context.read<LaporanBloc>().add(LoadLaporan(
+          tabIndex: tab.index,
+          startDate: _filterStart,
+          endDate: _filterEnd,
+        ));
   }
 
   void _pickDateRange() async {
@@ -68,7 +53,7 @@ class _LaporanPageState extends State<LaporanPage>
         _filterEnd = picked.end;
       });
       context.read<LaporanBloc>().add(LoadLaporan(
-            tabIndex: _tabController.index,
+            tabIndex: _activeTab.index,
             startDate: _filterStart,
             endDate: _filterEnd,
           ));
@@ -77,82 +62,139 @@ class _LaporanPageState extends State<LaporanPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Laporan'),
-        bottom: TabBar(
-          controller: _tabController,
-          isScrollable: true,
-          tabAlignment: TabAlignment.start,
-          labelStyle: const TextStyle(fontSize: 12),
-          tabs: const [
-            Tab(text: 'Ringkasan'),
-            Tab(text: 'Laba Rugi'),
-            Tab(text: 'Terlaris'),
-            Tab(text: 'Hutang'),
-            Tab(text: 'Arus Kas'),
-            Tab(text: 'Stok'),
-          ],
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.picture_as_pdf),
-            onPressed: () => _exportToPdf(context.read<LaporanBloc>().state),
-            tooltip: 'Export PDF',
+    return Column(
+      children: [
+        // ── Header: Tab pills + actions ──────────────────────────
+        _buildTabHeader(),
+        // ── Content area ─────────────────────────────────────────
+        Expanded(
+          child: BlocBuilder<LaporanBloc, LaporanState>(
+            builder: (context, state) {
+              if (state is LaporanLoading) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (state is LaporanError) {
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(state.message),
+                      const SizedBox(height: 16),
+                      ElevatedButton(
+                        onPressed: () => context.read<LaporanBloc>().add(
+                              LoadLaporan(tabIndex: _activeTab.index),
+                            ),
+                        child: const Text('Coba Lagi'),
+                      ),
+                    ],
+                  ),
+                );
+              }
+              return _buildTabContent(state);
+            },
           ),
-          IconButton(
-            icon: const Icon(Icons.date_range),
-            onPressed: _pickDateRange,
-            tooltip: 'Filter Tanggal',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabHeader() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tabs = [
+      (_LaporanTab.ringkasan, 'Ringkasan', Icons.dashboard_rounded),
+      (_LaporanTab.labaRugi, 'Laba Rugi', Icons.trending_up_rounded),
+      (_LaporanTab.terlaris, 'Terlaris', Icons.star_rounded),
+      (_LaporanTab.hutang, 'Hutang', Icons.account_balance_wallet_rounded),
+      (_LaporanTab.arusKas, 'Arus Kas', Icons.swap_vert_rounded),
+      (_LaporanTab.stok, 'Stok Tipis', Icons.inventory_rounded),
+    ];
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 12),
+      decoration: BoxDecoration(
+        color: isDark ? Theme.of(context).colorScheme.surface : Colors.white,
+        border: Border(
+          bottom: BorderSide(
+            color: isDark ? Colors.white12 : const Color(0xFFE5E7EB),
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          // Tab pills
+          Expanded(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: tabs.map((entry) {
+                  final (tab, label, icon) = entry;
+                  final isActive = _activeTab == tab;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: _TabPill(
+                      label: label,
+                      icon: icon,
+                      isActive: isActive,
+                      onTap: () => _setTab(tab),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          // Filter tanggal
+          Tooltip(
+            message: 'Filter Tanggal',
+            child: OutlinedButton.icon(
+              onPressed: _pickDateRange,
+              icon: const Icon(Icons.date_range_rounded, size: 16),
+              label: Text(
+                '${DateFormat('dd/MM').format(_filterStart)} – ${DateFormat('dd/MM/yy').format(_filterEnd)}',
+                style: const TextStyle(fontSize: 12),
+              ),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: Size.zero,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          // Export PDF
+          Tooltip(
+            message: 'Export PDF',
+            child: OutlinedButton.icon(
+              onPressed: () => _exportToPdf(context.read<LaporanBloc>().state),
+              icon: const Icon(Icons.picture_as_pdf_rounded, size: 16),
+              label: const Text('PDF', style: TextStyle(fontSize: 12)),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                minimumSize: Size.zero,
+                visualDensity: VisualDensity.compact,
+              ),
+            ),
           ),
         ],
       ),
-      body: BlocBuilder<LaporanBloc, LaporanState>(
-        builder: (context, state) {
-          if (state is LaporanLoading) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (state is LaporanError) {
-            return Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(state.message),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => context.read<LaporanBloc>().add(
-                          LoadLaporan(tabIndex: _tabController.index),
-                        ),
-                    child: const Text('Coba Lagi'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () async => context.read<LaporanBloc>().add(
-                  LoadLaporan(
-                    tabIndex: _tabController.index,
-                    startDate: _filterStart,
-                    endDate: _filterEnd,
-                  ),
-                ),
-            child: TabBarView(
-              controller: _tabController,
-              children: [
-                _buildRingkasan(state),
-                _buildLabaRugi(state),
-                _buildTerlaris(state),
-                _buildHutang(state),
-                _buildArusKas(state),
-                _buildStok(state),
-              ],
-            ),
-          );
-        },
-      ),
     );
+  }
+
+  Widget _buildTabContent(LaporanState state) {
+    switch (_activeTab) {
+      case _LaporanTab.ringkasan:
+        return _buildRingkasan(state);
+      case _LaporanTab.labaRugi:
+        return _buildLabaRugi(state);
+      case _LaporanTab.terlaris:
+        return _buildTerlaris(state);
+      case _LaporanTab.hutang:
+        return _buildHutang(state);
+      case _LaporanTab.arusKas:
+        return _buildArusKas(state);
+      case _LaporanTab.stok:
+        return _buildStok(state);
+    }
   }
 
   // ─── TAB 0: RINGKASAN ───
@@ -163,82 +205,96 @@ class _LaporanPageState extends State<LaporanPage>
     }
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            _dayFormat.format(DateTime.now()),
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.trending_up,
-                  label: 'Omset Hari Ini',
-                  value: _currency.format(state.omsetHariIni),
-                  color: AppTheme.primaryGreen,
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              _dayFormat.format(DateTime.now()),
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.trending_up,
+                    label: 'Omset Hari Ini',
+                    value: _currency.format(state.omsetHariIni),
+                    color: AppTheme.primaryGreen,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _StatCard(
-                  icon: Icons.receipt_long,
-                  label: 'Transaksi',
-                  value: '${state.totalTransaksi}',
-                  color: Colors.blue,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.receipt_long,
+                    label: 'Transaksi',
+                    value: '${state.totalTransaksi}',
+                    color: Colors.blue,
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-          const Text(
-            'Transaksi Hari Ini',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 8),
-          if (state.transaksiHariIni.isEmpty)
-            const Card(
-              child: Padding(
-                padding: EdgeInsets.all(24),
-                child: Center(child: Text('Belum ada transaksi')),
-              ),
-            )
-          else
-            ...state.transaksiHariIni.map(
-              (t) => Card(
-                margin: const EdgeInsets.only(bottom: 4),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: AppTheme.lightGreen,
-                    child: Icon(
-                      t.status == 'lunas'
-                          ? Icons.check_circle
-                          : Icons.book,
-                      color: t.status == 'lunas'
-                          ? AppTheme.primaryGreen
-                          : AppTheme.warningOrange,
-                      size: 20,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.store_rounded,
+                    label: 'Rata-rata/Transaksi',
+                    value: state.totalTransaksi > 0
+                        ? _currency.format(state.omsetHariIni / state.totalTransaksi)
+                        : 'Rp0',
+                    color: Colors.purple,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 28),
+            const Text(
+              'Transaksi Hari Ini',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            if (state.transaksiHariIni.isEmpty)
+              const Card(
+                child: Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(child: Text('Belum ada transaksi')),
+                ),
+              )
+            else
+              ...state.transaksiHariIni.map(
+                (t) => Card(
+                  margin: const EdgeInsets.only(bottom: 6),
+                  child: ListTile(
+                    leading: CircleAvatar(
+                      backgroundColor: AppTheme.lightGreen,
+                      child: Icon(
+                        t.status == 'lunas'
+                            ? Icons.check_circle
+                            : Icons.book,
+                        color: t.status == 'lunas'
+                            ? AppTheme.primaryGreen
+                            : AppTheme.warningOrange,
+                        size: 20,
+                      ),
+                    ),
+                    title: Text(
+                      'Transaksi #${t.id?.substring(0, 8)}',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      _dateFormat.format(t.createdAt!),
+                      style: TextStyle(fontSize: 12, color: AppTheme.neutralGrey),
+                    ),
+                    trailing: Text(
+                      _currency.format(t.totalHarga),
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  title: Text(
-                    'Transaksi #${t.id?.substring(0, 8)}',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text(
-                    _dateFormat.format(t.createdAt!),
-                    style: TextStyle(fontSize: 12, color: AppTheme.neutralGrey),
-                  ),
-                  trailing: Text(
-                    _currency.format(t.totalHarga),
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
                 ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -249,101 +305,103 @@ class _LaporanPageState extends State<LaporanPage>
     if (state is! LaporanLabaRugiLoaded) {
       return _emptyState();
     }
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: _StatCard(
-                icon: Icons.shopping_cart,
-                label: 'Omzet',
-                value: _currency.format(state.totalOmzet),
-                color: Colors.blue,
-              ),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.shopping_cart,
+                    label: 'Omzet',
+                    value: _currency.format(state.totalOmzet),
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.trending_up,
+                    label: 'Laba Kotor',
+                    value: _currency.format(state.totalLabaKotor),
+                    color: AppTheme.primaryGreen,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.percent,
+                    label: 'Margin Rata-rata',
+                    value: state.totalOmzet > 0
+                        ? '${(state.totalLabaKotor / state.totalOmzet * 100).toStringAsFixed(1)}%'
+                        : '0%',
+                    color: AppTheme.warningOrange,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.inventory_2,
+                    label: 'Total Produk',
+                    value: '${state.items.length}',
+                    color: Colors.teal,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                icon: Icons.trending_up,
-                label: 'Laba Kotor',
-                value: _currency.format(state.totalLabaKotor),
-                color: AppTheme.primaryGreen,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                icon: Icons.percent,
-                label: 'Margin Rata-rata',
-                value: state.totalOmzet > 0
-                    ? '${(state.totalLabaKotor / state.totalOmzet * 100).toStringAsFixed(1)}%'
-                    : '0%',
-                color: AppTheme.warningOrange,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                icon: Icons.inventory_2,
-                label: 'Total Produk',
-                value: '${state.items.length}',
-                color: Colors.teal,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        if (state.items.isEmpty)
-          const Card(child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: Text('Tidak ada data')),
-          ))
-        else
-          ...state.items.map((item) => Card(
-                margin: const EdgeInsets.only(bottom: 4),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(item.namaProduk,
-                                style: const TextStyle(fontWeight: FontWeight.w600)),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${item.qtyTerjual} terjual',
-                              style: TextStyle(fontSize: 12, color: AppTheme.neutralGrey),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+            const SizedBox(height: 24),
+            if (state.items.isEmpty)
+              const Card(child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: Text('Tidak ada data')),
+              ))
+            else
+              ...state.items.map((item) => Card(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
                         children: [
-                          Text(_currency.format(item.labaKotor),
-                              style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: item.labaKotor >= 0
-                                      ? AppTheme.primaryGreen
-                                      : AppTheme.warningRed)),
-                          Text(
-                            '${item.marginPersen.toStringAsFixed(1)}%',
-                            style: TextStyle(fontSize: 12, color: AppTheme.neutralGrey),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(item.namaProduk,
+                                    style: const TextStyle(fontWeight: FontWeight.w600)),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${item.qtyTerjual} terjual',
+                                  style: TextStyle(fontSize: 12, color: AppTheme.neutralGrey),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(_currency.format(item.labaKotor),
+                                  style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: item.labaKotor >= 0
+                                          ? AppTheme.primaryGreen
+                                          : AppTheme.warningRed)),
+                              Text(
+                                '${item.marginPersen.toStringAsFixed(1)}%',
+                                style: TextStyle(fontSize: 12, color: AppTheme.neutralGrey),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-              )),
-      ],
+                    ),
+                  )),
+          ],
+        ),
+      ),
     );
   }
 
@@ -354,46 +412,78 @@ class _LaporanPageState extends State<LaporanPage>
     final items = state.items;
     if (items.isEmpty) return _centerText('Belum ada data penjualan');
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: items.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: Column(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.star,
-                        label: 'Terlaris',
-                        value: items.first.namaProduk.length > 15
-                            ? '${items.first.namaProduk.substring(0, 15)}...'
-                            : items.first.namaProduk,
-                        color: Colors.amber,
+                // Stat cards
+                Expanded(
+                  flex: 3,
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.star,
+                              label: 'Terlaris',
+                              value: items.first.namaProduk.length > 15
+                                  ? '${items.first.namaProduk.substring(0, 15)}...'
+                                  : items.first.namaProduk,
+                              color: Colors.amber,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _StatCard(
+                              icon: Icons.shopping_bag,
+                              label: 'Total Terjual',
+                              value: '${items.fold(0, (s, i) => s + i.qtyTerjual)}',
+                              color: Colors.blue,
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StatCard(
-                        icon: Icons.shopping_bag,
-                        label: 'Total Terjual',
-                        value: '${items.fold(0, (s, i) => s + i.qtyTerjual)}',
-                        color: Colors.blue,
-                      ),
-                    ),
-                  ],
+                      const SizedBox(height: 20),
+                      // List
+                      ...items.asMap().entries.map((e) {
+                        final i = e.key;
+                        final item = e.value;
+                        final medal = i == 0 ? '🥇' : i == 1 ? '🥈' : i == 2 ? '🥉' : '${i + 1}.';
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 6),
+                          child: ListTile(
+                            leading: CircleAvatar(
+                              backgroundColor: i < 3 ? Colors.amber.withValues(alpha: 0.2) : null,
+                              child: Text(medal, style: const TextStyle(fontSize: 14)),
+                            ),
+                            title: Text(item.namaProduk,
+                                style: const TextStyle(fontWeight: FontWeight.w600)),
+                            subtitle: Text('${item.qtyTerjual} terjual'),
+                            trailing: Text(_currency.format(item.totalPenjualan),
+                                style: const TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                        );
+                      }),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(width: 24),
+                // Pie chart
                 if (items.isNotEmpty)
                   SizedBox(
-                    height: 200,
+                    width: 240,
+                    height: 240,
                     child: PieChart(
                       PieChartData(
                         sectionsSpace: 2,
-                        centerSpaceRadius: 40,
+                        centerSpaceRadius: 50,
                         sections: items.take(5).toList().asMap().entries.map((e) {
                           final i = e.key;
                           final item = e.value;
@@ -402,8 +492,9 @@ class _LaporanPageState extends State<LaporanPage>
                             color: colors[i % colors.length],
                             value: item.qtyTerjual.toDouble(),
                             title: '${item.qtyTerjual}',
-                            radius: 50,
-                            titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                            radius: 60,
+                            titleStyle: const TextStyle(
+                                fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                           );
                         }).toList(),
                       ),
@@ -411,32 +502,9 @@ class _LaporanPageState extends State<LaporanPage>
                   ),
               ],
             ),
-          );
-        }
-        final i = index - 1;
-        final item = items[i];
-        final medal = i == 0
-            ? '🥇'
-            : i == 1
-                ? '🥈'
-                : i == 2
-                    ? '🥉'
-                    : '${i + 1}.';
-        return Card(
-          margin: const EdgeInsets.only(bottom: 4),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: i < 3 ? Colors.amber.withValues(alpha: 0.2) : null,
-              child: Text(medal, style: const TextStyle(fontSize: 14)),
-            ),
-            title: Text(item.namaProduk,
-                style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text('${item.qtyTerjual} terjual'),
-            trailing: Text(_currency.format(item.totalPenjualan),
-                style: const TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        );
-      },
+          ],
+        ),
+      ),
     );
   }
 
@@ -446,99 +514,93 @@ class _LaporanPageState extends State<LaporanPage>
     if (state is! LaporanHutangLoaded) return _emptyState();
     final hutangList = state.hutangList;
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: _StatCard(
-                icon: Icons.warning,
-                label: 'Outstanding',
-                value: _currency.format(state.totalOutstanding),
-                color: AppTheme.warningRed,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                icon: Icons.check_circle,
-                label: 'Lunas',
-                value: _currency.format(state.totalLunas),
-                color: AppTheme.primaryGreen,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _StatCard(
-                icon: Icons.people,
-                label: 'Pelanggan Aktif',
-                value: '${state.pelangganOutstanding}',
-                color: Colors.blue,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                icon: Icons.receipt_long,
-                label: 'Total Hutang',
-                value: '${hutangList.length}',
-                color: Colors.teal,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 24),
-        if (hutangList.isEmpty)
-          const Card(child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: Text('Belum ada catatan hutang')),
-          ))
-        else
-          ...hutangList.map((h) => Card(
-                margin: const EdgeInsets.only(bottom: 4),
-                child: ListTile(
-                  leading: CircleAvatar(
-                    backgroundColor: h.status == 'lunas'
-                        ? AppTheme.lightGreen
-                        : AppTheme.warningRed.withValues(alpha: 0.1),
-                    child: Icon(
-                      h.status == 'lunas'
-                          ? Icons.check_circle
-                          : Icons.pending,
-                      color: h.status == 'lunas'
-                          ? AppTheme.primaryGreen
-                          : AppTheme.warningRed,
-                      size: 20,
-                    ),
-                  ),
-                  title: Text(h.namaPelanggan,
-                      style: const TextStyle(fontWeight: FontWeight.w600)),
-                  subtitle: Text(
-                    h.status == 'lunas' ? 'Lunas' : 'Belum Lunas',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: h.status == 'lunas'
-                          ? AppTheme.primaryGreen
-                          : AppTheme.warningRed,
-                    ),
-                  ),
-                  trailing: Text(
-                    _currency.format(h.jumlah),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: h.status == 'lunas'
-                          ? AppTheme.neutralGrey
-                          : AppTheme.warningRed,
-                    ),
+            Row(
+              children: [
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.warning,
+                    label: 'Outstanding',
+                    value: _currency.format(state.totalOutstanding),
+                    color: AppTheme.warningRed,
                   ),
                 ),
-              )),
-      ],
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.check_circle,
+                    label: 'Lunas',
+                    value: _currency.format(state.totalLunas),
+                    color: AppTheme.primaryGreen,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.people,
+                    label: 'Pelanggan Aktif',
+                    value: '${state.pelangganOutstanding}',
+                    color: Colors.blue,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.receipt_long,
+                    label: 'Total Hutang',
+                    value: '${hutangList.length}',
+                    color: Colors.teal,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            if (hutangList.isEmpty)
+              const Card(child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: Text('Belum ada catatan hutang')),
+              ))
+            else
+              ...hutangList.map((h) => Card(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: h.status == 'lunas'
+                            ? AppTheme.lightGreen
+                            : AppTheme.warningRed.withValues(alpha: 0.1),
+                        child: Icon(
+                          h.status == 'lunas' ? Icons.check_circle : Icons.pending,
+                          color: h.status == 'lunas' ? AppTheme.primaryGreen : AppTheme.warningRed,
+                          size: 20,
+                        ),
+                      ),
+                      title: Text(h.namaPelanggan,
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(
+                        h.status == 'lunas' ? 'Lunas' : 'Belum Lunas',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: h.status == 'lunas' ? AppTheme.primaryGreen : AppTheme.warningRed,
+                        ),
+                      ),
+                      trailing: Text(
+                        _currency.format(h.jumlah),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: h.status == 'lunas' ? AppTheme.neutralGrey : AppTheme.warningRed,
+                        ),
+                      ),
+                    ),
+                  )),
+          ],
+        ),
+      ),
     );
   }
 
@@ -547,106 +609,88 @@ class _LaporanPageState extends State<LaporanPage>
   Widget _buildArusKas(LaporanState state) {
     if (state is! LaporanArusKasLoaded) return _emptyState();
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(
-              child: _StatCard(
-                icon: Icons.arrow_upward,
-                label: 'Pemasukan',
-                value: _currency.format(state.totalPemasukan),
-                color: AppTheme.primaryGreen,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: _StatCard(
-                icon: Icons.arrow_downward,
-                label: 'Pengeluaran',
-                value: _currency.format(state.totalPengeluaran),
-                color: AppTheme.warningRed,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        Card(
-          color: state.saldoBersih >= 0
-              ? AppTheme.lightGreen
-              : AppTheme.warningRed.withValues(alpha: 0.1),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Row(
               children: [
-                Icon(
-                  state.saldoBersih >= 0
-                      ? Icons.savings
-                      : Icons.warning,
-                  color: state.saldoBersih >= 0
-                      ? AppTheme.primaryGreen
-                      : AppTheme.warningRed,
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.arrow_upward,
+                    label: 'Pemasukan',
+                    value: _currency.format(state.totalPemasukan),
+                    color: AppTheme.primaryGreen,
+                  ),
                 ),
-                const SizedBox(width: 8),
-                Text(
-                  'Saldo Bersih: ${_currency.format(state.saldoBersih)}',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: state.saldoBersih >= 0
-                        ? AppTheme.primaryGreen
-                        : AppTheme.warningRed,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _StatCard(
+                    icon: Icons.arrow_downward,
+                    label: 'Pengeluaran',
+                    value: _currency.format(state.totalPengeluaran),
+                    color: AppTheme.warningRed,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _StatCard(
+                    icon: state.saldoBersih >= 0 ? Icons.savings : Icons.warning,
+                    label: 'Saldo Bersih',
+                    value: _currency.format(state.saldoBersih),
+                    color: state.saldoBersih >= 0 ? AppTheme.primaryGreen : AppTheme.warningRed,
                   ),
                 ),
               ],
             ),
-          ),
-        ),
-        const SizedBox(height: 24),
-        if (state.items.isEmpty)
-          const Card(child: Padding(
-            padding: EdgeInsets.all(24),
-            child: Center(child: Text('Belum ada data')),
-          ))
-        else
-          ...state.items.map((item) => Card(
-                margin: const EdgeInsets.only(bottom: 4),
-                child: Padding(
-                  padding: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _dayFormat.format(item.tanggal),
-                          style: const TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+            const SizedBox(height: 24),
+            if (state.items.isEmpty)
+              const Card(child: Padding(
+                padding: EdgeInsets.all(24),
+                child: Center(child: Text('Belum ada data')),
+              ))
+            else
+              ...state.items.map((item) => Card(
+                    margin: const EdgeInsets.only(bottom: 6),
+                    child: Padding(
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
                         children: [
-                          Text(
-                            '+${_currency.format(item.pemasukan)}',
-                            style: const TextStyle(
-                              color: AppTheme.primaryGreen,
-                              fontSize: 13,
+                          Expanded(
+                            child: Text(
+                              _dayFormat.format(item.tanggal),
+                              style: const TextStyle(fontWeight: FontWeight.w600),
                             ),
                           ),
-                          Text(
-                            '-${_currency.format(item.pengeluaran)}',
-                            style: const TextStyle(
-                              color: AppTheme.warningRed,
-                              fontSize: 13,
-                            ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                '+${_currency.format(item.pemasukan)}',
+                                style: const TextStyle(
+                                  color: AppTheme.primaryGreen,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                '-${_currency.format(item.pengeluaran)}',
+                                style: const TextStyle(
+                                  color: AppTheme.warningRed,
+                                  fontSize: 13,
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ),
-              )),
-      ],
+                    ),
+                  )),
+          ],
+        ),
+      ),
     );
   }
 
@@ -660,75 +704,64 @@ class _LaporanPageState extends State<LaporanPage>
       return _centerText('Semua produk dalam stok cukup');
     }
 
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: produkList.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _StatCard(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1100),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _StatCard(
               icon: Icons.inventory,
               label: 'Produk Menipis',
               value: '${produkList.length} produk',
               color: AppTheme.warningRed,
             ),
-          );
-        }
-        final p = produkList[index - 1];
-        final minStok = p.stokMinimum ?? _getGlobalMinStok();
-        return Card(
-          margin: const EdgeInsets.only(bottom: 4),
-          child: ListTile(
-            leading: CircleAvatar(
-              backgroundColor: AppTheme.warningRed.withValues(alpha: 0.1),
-              child: Icon(Icons.warning, color: AppTheme.warningRed, size: 20),
-            ),
-            title: Text(p.nama, style: const TextStyle(fontWeight: FontWeight.w600)),
-            subtitle: Text(
-              'Stok: ${p.stok} ${p.satuan ?? ''} (min: $minStok)',
-              style: const TextStyle(fontSize: 12),
-            ),
-            trailing: Text(
-              '${p.stok}',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: p.stok <= 0 ? AppTheme.warningRed : AppTheme.warningOrange,
-              ),
-            ),
-          ),
-        );
-      },
+            const SizedBox(height: 20),
+            ...produkList.map((p) {
+              final minStok = p.stokMinimum ?? 0;
+              return Card(
+                margin: const EdgeInsets.only(bottom: 6),
+                child: ListTile(
+                  leading: CircleAvatar(
+                    backgroundColor: AppTheme.warningRed.withValues(alpha: 0.1),
+                    child: Icon(Icons.warning, color: AppTheme.warningRed, size: 20),
+                  ),
+                  title: Text(p.nama, style: const TextStyle(fontWeight: FontWeight.w600)),
+                  subtitle: Text(
+                    'Stok: ${p.stok} ${p.satuan ?? ''} (min: $minStok)',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                  trailing: Text(
+                    '${p.stok}',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: p.stok <= 0 ? AppTheme.warningRed : AppTheme.warningOrange,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
     );
   }
 
-  int _getGlobalMinStok() {
-    try {
-      return 0;
-    } catch (_) {
-      return 5;
-    }
-  }
-
   Widget _emptyState() {
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      children: [
-        const SizedBox(height: 120),
-        Center(
-          child: Column(
-            children: [
-              Icon(Icons.touch_app, size: 48, color: AppTheme.neutralGrey.withValues(alpha: 0.3)),
-              const SizedBox(height: 16),
-              Text(
-                'Pilih tab di atas untuk melihat laporan',
-                style: TextStyle(color: AppTheme.neutralGrey),
-              ),
-            ],
+    return Center(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.touch_app, size: 48, color: AppTheme.neutralGrey.withValues(alpha: 0.3)),
+          const SizedBox(height: 16),
+          Text(
+            'Pilih tab di atas untuk melihat laporan',
+            style: TextStyle(color: AppTheme.neutralGrey),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -743,7 +776,8 @@ class _LaporanPageState extends State<LaporanPage>
 
   Future<void> _exportToPdf(LaporanState state) async {
     final pdf = pw.Document();
-    
+    final dateStr = DateFormat('dd/MM/yyyy HH:mm').format(DateTime.now());
+
     pdf.addPage(
       pw.Page(
         build: (pw.Context context) {
@@ -752,7 +786,7 @@ class _LaporanPageState extends State<LaporanPage>
             children: [
               pw.Text('Laporan Tokodedy', style: pw.TextStyle(fontSize: 24, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 8),
-              pw.Text('Dicetak pada: ${_dateFormat.format(DateTime.now())}'),
+              pw.Text('Dicetak pada: $dateStr'),
               pw.SizedBox(height: 24),
               pw.Text('Ringkasan Data', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
               pw.SizedBox(height: 12),
@@ -775,6 +809,80 @@ class _LaporanPageState extends State<LaporanPage>
     );
   }
 }
+
+// ─── Tab Pill Widget ──────────────────────────────────────────────────────────
+
+class _TabPill extends StatefulWidget {
+  final String label;
+  final IconData icon;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _TabPill({
+    required this.label,
+    required this.icon,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  State<_TabPill> createState() => _TabPillState();
+}
+
+class _TabPillState extends State<_TabPill> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? AppTheme.primaryGreen.withValues(alpha: 0.15)
+                : _hovered
+                    ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: widget.isActive
+                  ? AppTheme.primaryGreen.withValues(alpha: 0.4)
+                  : Colors.transparent,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                widget.icon,
+                size: 15,
+                color: widget.isActive ? AppTheme.primaryGreen : AppTheme.neutralGrey,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.normal,
+                  color: widget.isActive
+                      ? AppTheme.primaryGreen
+                      : AppTheme.neutralGrey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Stat Card ───────────────────────────────────────────────────────────────
 
 class _StatCard extends StatelessWidget {
   final IconData icon;
@@ -799,8 +907,7 @@ class _StatCard extends StatelessWidget {
           children: [
             Icon(icon, color: color, size: 28),
             const SizedBox(height: 8),
-            Text(label,
-                style: TextStyle(color: AppTheme.neutralGrey, fontSize: 12)),
+            Text(label, style: TextStyle(color: AppTheme.neutralGrey, fontSize: 12)),
             const SizedBox(height: 4),
             Text(
               value,

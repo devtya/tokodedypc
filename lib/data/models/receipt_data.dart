@@ -36,6 +36,7 @@ class ReceiptData extends Equatable {
   final List<ReceiptItem> items;
   final double subtotal;
   final double totalDiskon;
+  final double globalDiskon;
   final double totalBayar;
   final double kembalian;
   final String metodePembayaran;
@@ -51,6 +52,7 @@ class ReceiptData extends Equatable {
     required this.items,
     required this.subtotal,
     this.totalDiskon = 0.0,
+    this.globalDiskon = 0.0,
     required this.totalBayar,
     this.kembalian = 0.0,
     this.metodePembayaran = 'Tunai',
@@ -67,6 +69,7 @@ class ReceiptData extends Equatable {
     List<ReceiptItem>? items,
     double? subtotal,
     double? totalDiskon,
+    double? globalDiskon,
     double? totalBayar,
     double? kembalian,
     String? metodePembayaran,
@@ -82,6 +85,7 @@ class ReceiptData extends Equatable {
       items: items ?? this.items,
       subtotal: subtotal ?? this.subtotal,
       totalDiskon: totalDiskon ?? this.totalDiskon,
+      globalDiskon: globalDiskon ?? this.globalDiskon,
       totalBayar: totalBayar ?? this.totalBayar,
       kembalian: kembalian ?? this.kembalian,
       metodePembayaran: metodePembayaran ?? this.metodePembayaran,
@@ -99,6 +103,7 @@ class ReceiptData extends Equatable {
         'items': items.map((e) => e.toJson()).toList(),
         'subtotal': subtotal,
         'total_diskon': totalDiskon,
+        'global_diskon': globalDiskon,
         'total_bayar': totalBayar,
         'kembalian': kembalian,
         'metode_pembayaran': metodePembayaran,
@@ -116,6 +121,7 @@ class ReceiptData extends Equatable {
         items,
         subtotal,
         totalDiskon,
+        globalDiskon,
         totalBayar,
         kembalian,
         metodePembayaran,

@@ -39,9 +39,7 @@ class _PinSettingsPageState extends State<PinSettingsPage> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan PIN')),
-      body: BlocConsumer<LocalAuthBloc, LocalAuthState>(
+    return BlocConsumer<LocalAuthBloc, LocalAuthState>(
         listener: (context, state) {
           if (state is PinReady) {
             setState(() {
@@ -167,8 +165,7 @@ class _PinSettingsPageState extends State<PinSettingsPage> {
             ],
           );
         },
-      ),
-    );
+      );
   }
 
   Future<void> _setPin() async {

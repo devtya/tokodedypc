@@ -35,12 +35,16 @@ class ProdukFormPage extends StatefulWidget {
   final Produk? produk;
   final String? initialName;
   final String? initialBarcode;
+  final bool isSidePanel;
+  final VoidCallback? onCloseSidePanel;
 
   const ProdukFormPage({
     super.key,
     this.produk,
     this.initialName,
     this.initialBarcode,
+    this.isSidePanel = false,
+    this.onCloseSidePanel,
   });
 
   @override
@@ -601,10 +605,14 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
                       TextButton(
                         onPressed: () {
                           Navigator.pop(ctx);
-                          Navigator.maybePop(
-                            context,
-                            _addedIds.isNotEmpty ? _addedIds : null,
-                          );
+                          if (widget.isSidePanel && widget.onCloseSidePanel != null) {
+                            widget.onCloseSidePanel!();
+                          } else {
+                            Navigator.maybePop(
+                              context,
+                              _addedIds.isNotEmpty ? _addedIds : null,
+                            );
+                          }
                         },
                         child: const Text('Selesai'),
                       ),
@@ -663,10 +671,15 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
     return AppBar(
       backgroundColor: _colors.primaryContainer,
       elevation: 0,
-      leading: IconButton(
-        onPressed: () => Navigator.maybePop(context),
-        icon: Icon(Icons.arrow_back, color: _colors.onSurface, size: 20),
-      ),
+      leading: widget.isSidePanel
+          ? IconButton(
+              onPressed: widget.onCloseSidePanel ?? () => Navigator.maybePop(context),
+              icon: Icon(Icons.close, color: _colors.onSurface, size: 20),
+            )
+          : IconButton(
+              onPressed: () => Navigator.maybePop(context),
+              icon: Icon(Icons.arrow_back, color: _colors.onSurface, size: 20),
+            ),
       title: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

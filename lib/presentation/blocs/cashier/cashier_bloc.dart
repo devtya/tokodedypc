@@ -28,6 +28,7 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
     on<UpdateJumlahCart>(_onUpdateJumlah);
     on<UpdateJumlahBayar>(_onUpdateBayar);
     on<SetDiskonItem>(_onSetDiskon);
+    on<SetGlobalDiskon>(_onSetGlobalDiskon);
     on<LoadCartFromPending>(_onLoadPending);
     on<BayarCashier>(_onBayar);
     on<BayarHutangCashier>(_onBayarHutang);
@@ -187,6 +188,15 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
     emit(current.copyWith(cart: cart));
   }
 
+  void _onSetGlobalDiskon(SetGlobalDiskon event, Emitter<CashierState> emit) {
+    if (state is! CashierReady) return;
+    final current = state as CashierReady;
+    emit(current.copyWith(
+      globalDiskonTipe: event.tipe,
+      globalDiskonValue: event.value,
+    ));
+  }
+
   void _onLoadPending(LoadCartFromPending event, Emitter<CashierState> emit) {
     final items = event.items;
     emit(const CashierReady());
@@ -232,9 +242,15 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
     }
     try {
       emit(CashierLoading());
+      final diskonGlobal = CashierDiscountHelper.hitungTotalDiskon(
+        current.total - current.totalDiskon,
+        current.globalDiskonTipe,
+        current.globalDiskonValue,
+      );
       final id = await buatTransaksi(
         cartItems: current.cart,
         jumlahBayar: current.jumlahBayar,
+        diskonGlobal: diskonGlobal,
       );
       emit(CashierSuccess(id));
     } catch (e) {
@@ -263,10 +279,16 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
     }
     try {
       emit(CashierLoading());
+      final diskonGlobal = CashierDiscountHelper.hitungTotalDiskon(
+        current.total - current.totalDiskon,
+        current.globalDiskonTipe,
+        current.globalDiskonValue,
+      );
       final id = await buatTransaksi(
         cartItems: current.cart,
         jumlahBayar: 0,
         namaPelanggan: event.namaPelanggan.trim(),
+        diskonGlobal: diskonGlobal,
       );
       emit(CashierSuccess(id, isHutang: true));
     } catch (e) {
@@ -281,7 +303,12 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
   void _onClearError(ClearError event, Emitter<CashierState> emit) {
     if (state is CashierError) {
       final error = state as CashierError;
-      emit(CashierReady(cart: error.cart, jumlahBayar: error.jumlahBayar));
+      emit(CashierReady(
+        cart: error.cart,
+        jumlahBayar: error.jumlahBayar,
+        globalDiskonTipe: error.globalDiskonTipe,
+        globalDiskonValue: error.globalDiskonValue,
+      ));
     }
   }
 

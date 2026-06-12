@@ -9,6 +9,7 @@ class Transaksi extends Equatable {
   final double jumlahBayar;
   final double kembalian;
   final String status; // 'lunas' | 'hutang'
+  final double diskonGlobal;
   final DateTime? updatedAt;
   final DateTime? createdAt;
   final List<ItemTransaksi>? items;
@@ -20,6 +21,7 @@ class Transaksi extends Equatable {
     required this.jumlahBayar,
     required this.kembalian,
     this.status = 'lunas',
+    this.diskonGlobal = 0,
     this.updatedAt,
     this.createdAt,
     this.items,
@@ -32,6 +34,7 @@ class Transaksi extends Equatable {
     double? jumlahBayar,
     double? kembalian,
     String? status,
+    double? diskonGlobal,
     DateTime? updatedAt,
     DateTime? createdAt,
     List<ItemTransaksi>? items,
@@ -43,6 +46,7 @@ class Transaksi extends Equatable {
       jumlahBayar: jumlahBayar ?? this.jumlahBayar,
       kembalian: kembalian ?? this.kembalian,
       status: status ?? this.status,
+      diskonGlobal: diskonGlobal ?? this.diskonGlobal,
       updatedAt: updatedAt ?? this.updatedAt,
       createdAt: createdAt ?? this.createdAt,
       items: items ?? this.items,
@@ -52,6 +56,6 @@ class Transaksi extends Equatable {
   @override
   List<Object?> get props => [
     id, kasirId, totalHarga, jumlahBayar, kembalian,
-    status, updatedAt, createdAt, items,
+    status, diskonGlobal, updatedAt, createdAt, items,
   ];
 }

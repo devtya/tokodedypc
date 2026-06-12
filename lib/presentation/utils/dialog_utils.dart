@@ -41,6 +41,7 @@ class DialogUtils {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
+              autofocus: true,
               title: Text('${produk.nama} (${produk.satuan})'),
               subtitle: Text(_currency.format(hargaDasar)),
               trailing: const Icon(Icons.add_circle, color: AppTheme.accentGreen),

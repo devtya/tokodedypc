@@ -1,16 +1,20 @@
-# AGENTS.md — tokodedy
+# AGENTS.md — tokodedypc (Windows Desktop)
 
 ## Stack
 
 - **Framework**: Flutter (Dart SDK ^3.11.5)
-- **State Management**: flutter_bloc ^9.1 + equatable ^2.0
+- **Target Platform**: Windows Desktop (`flutter build windows`)
 - **Database**: drift ^2.25 + sqlite3_flutter_libs (SQLite ORM)
 - **DI**: get_it ^8.0
-- **Barcode**: mobile_scanner ^6.0
+- **Barcode**: Input manual (dialog teks) — kamera tidak tersedia di Windows
+- **Printing**: Network (HTTP) via print_server.py — Bluetooth tidak didukung di Windows
 - **Linting**: flutter_lints ^6.0
+- **Android folder**: Sudah dihapus, project murni Windows Desktop
 
 ## Related Projects
-- **DedyStore** (`d:\PROJECT\TOKO DEDY\dedystore`): Proyek front-end toko online untuk pembeli yang terhubung dengan database Supabase Tokodedy. Segala bentuk koordinasi, todo list bersama, dan protokol sinkronisasi antar agen terdapat pada file `dedysync.md` di root folder `d:\PROJECT\TOKO DEDY`.
+- **tokodedy** (`d:\PROJECT\TOKO DEDY\tokodedy`): Proyek Android asal (POS mobile). tokodedypc adalah fork/copy dari project ini untuk Windows.
+- **DedyStore** (`d:\PROJECT\TOKO DEDY\dedystore`): Proyek front-end toko online (Next.js) untuk pembeli yang terhubung dengan database Supabase.
+- Segala koordinasi, todo list bersama, dan protokol sinkronisasi antar agen terdapat pada file `dedysync.md` di root folder `d:\PROJECT\TOKO DEDY`.
 
 ## Project structure (Clean Architecture)
 
@@ -22,7 +26,7 @@ lib/
   presentation/  blocs/, pages/, widgets/
 ```
 
-> **Pages**: All page files are under `lib/presentation/pages/`. Desktop Windows platform has been removed — this project now targets Android only.
+> **Pages**: All page files are under `lib/presentation/pages/`. Project ini adalah versi desktop Windows yang di-fork dari project Android `tokodedy`. Sebagian kode Android (AndroidManifest, MainActivity.kt) masih tersisa sebagai fondasi.
 
 ## Key commands
 
@@ -31,8 +35,8 @@ lib/
 | `flutter analyze` | Lint + typecheck in one step. Run before committing. |
 | `dart run build_runner build` | After modifying any Drift table or adding @DriftDatabase decorator. Generates `*.g.dart`. |
 | `flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...` | Debug dengan Supabase sync aktif. |
-| `flutter build apk --debug --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...` | **Default** — build debug APK dengan Supabase sync. |
-| `flutter build apk --release --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...` | Build release APK (final). |
+| `flutter build windows --debug --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...` | **Default** — build debug Windows exe dengan Supabase sync (no APK, langsung .exe). |
+| `flutter build windows --release --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...` | Build release Windows exe (final). |
 | `flutter test` | Run all tests. |
 
 ## Database (Drift)
@@ -78,6 +82,7 @@ lib/
 - **Sebelum ubah kode**: WAJIB konfirmasi ke user dan jelaskan alasan/kenapa kode tersebut perlu diubah sebelum melakukan perubahan. Sertakan juga dampak dari perubahan tersebut.
 - **Todo List**: Sebelum mengerjakan perbaikan arsitektur atau tech debt, WAJIB mengupdate file `IMPROVEMENTS.md` dengan menandai bagian yang akan dikerjakan beserta ringkasan cara/metode yang akan digunakan.
 - **i18n & Localization**: WAJIB menghindari teks *hardcoded* pada UI (terutama di dalam `Text()`, `SnackBar`, dll). Semua teks bahasa yang digunakan di halaman antarmuka harus didaftarkan melalui file `lib/i18n/strings.i18n.json` dan digenerate menggunakan `dart run slang`.
+- **Desktop Navigation / Sidebar**: Semua menu/halaman tidak boleh melakukan `Navigator.push` ke rute global untuk membuka layar penuh (kecuali untuk dialog/popup). Sidebar utama (`HomePage` sidebar) WAJIB selalu terlihat dan bisa diakses. Jika sebuah menu memiliki sub-halaman (misalnya Pembelian ke PembelianForm), WAJIB menggunakan **Local Navigator** (`Navigator` mandiri dengan GlobalKey di dalam konten halaman tersebut) agar navigasinya terkurung di sebelah kanan sidebar.
 
 
 ## Pembelian Pages Layout Rules (LOCKED — DO NOT CHANGE)
@@ -97,13 +102,13 @@ lib/
 
 ## Printing System (Thermal Printer)
 
-- **Architecture**: HP → HTTP → PC Print Server (Python + FastAPI) → USB Thermal Printer, atau langsung via Bluetooth
+- **Architecture**: HP → HTTP → PC Print Server (Python + FastAPI) → USB Thermal Printer (Bluetooth tidak didukung di Windows)
 - **PC Print Server**: `print_server.py` di root project. Run: `pip install fastapi uvicorn python-escpos pyusb && python print_server.py`
-- **Flutter Services**: `PrinterService` abstraction → `NetworkPrinterService` (HTTP) + `BluetoothPrinterService` (BLE via `flutter_blue_plus`)
-- **Settings**: `PrinterSettingsPage` accessible from Settings page. Configure printer type (Network/Bluetooth), URL, toko name, paper width (58mm/80mm), ukuran font (kecil/normal/besar)
+- **Flutter Services**: `PrinterService` abstraction → `NetworkPrinterService` (HTTP) — `BluetoothPrinterService` adalah stub (tidak berfungsi di Windows)
+- **Settings**: `PrinterSettingsPage` accessible from Settings page. Configure URL, toko name, paper width (58mm/80mm), ukuran font (kecil/normal/besar)
 - **Auto-print**: After cashier transaction success, receipt auto-prints if printer is enabled in settings
-- **Dynamic DI**: `PrinterService` diregistrasi ulang via `updatePrinterService()` saat tipe printer berubah. `ReceiptGenerator` baca `fontSize` dari `PrinterSettings`.
-- **ESC-POS**: Both network and Bluetooth services generate raw ESC-POS commands; ukuran font dikontrol via ESC/POS print mode byte
+- **Dynamic DI**: `PrinterService` diregistrasi ulang via `updatePrinterService()` saat URL berubah. `ReceiptGenerator` baca `fontSize` dari `PrinterSettings`.
+- **ESC-POS**: Network service generates raw ESC-POS commands via HTTP JSON ke print_server.py; ukuran font dikontrol via ESC/POS print mode byte
 
 ## Version Tracking
 
@@ -121,6 +126,12 @@ Current: **1.7.3**
 > - Fitur: `### Fitur: <nama>` dengan deskripsi, cara pakai, files, date
 
 ## Bug Fixes Log
+
+### Fitur: Diskon Global & Auto-Submit UI
+- **Deskripsi**: (1) Menambahkan fitur Diskon Global pada halaman Kasir (Penjualan). Diskon Global ini mengurangi total belanja secara keseluruhan (selain diskon per-item), dan akan tersimpan ke database serta tampil pada nota kasir. (2) Menambahkan *event trigger* `onSubmitted` (tekan Enter pada *keyboard*) di berbagai form/dialog (seperti Input Diskon Item, Input Diskon Global, Input Jumlah Bayar, serta Input Password pada Halaman Login) agar langsung memicu aksi simpan/submit tanpa harus menekan tombol secara manual menggunakan kursor.
+- **Cara pakai**: (1) Pada halaman kasir, ketuk ikon diskon di sebelah tulisan "Total", lalu masukkan nominal atau persen diskon global. (2) Saat mengetik pada *field* password di Login, jumlah bayar di Kasir, atau diskon, tekan 'Enter' untuk langsung melanjutkan/menyimpan.
+- **Files**: `transaksi_repository_impl.dart`, `buat_transaksi.dart`, `receipt_data.dart`, `receipt_generator.dart`, `cashier_bloc.dart`, `cashier_state.dart`, `cashier_event.dart`, `cashier_page.dart`, `login_page.dart`
+- **Date**: 2026-06-12
 
 ### Bug: Pembelian — Satuan dasar tergantikan oleh satuan konversi saat simpan ke pending
 - **Root cause**: Saat fitur tambah satuan digunakan di keranjang (misal: "PAK"), satuan ditambahkan dengan benar. Namun saat disimpan ke *Pending Pembelian*, argumen `satuanId` dan `konversi` tidak dimasukkan ke dalam `PendingPembelianItemData` sehingga nilai di database menjadi null. Akibatnya saat pending dibuka kembali, sistem mengira produk tersebut menggunakan "satuan dasar", merusak update HPP produk utama dan membingungkan kasir (nama "Dasar" dengan harga "PAK"). Selain itu, di Kasir (Penjualan), `satuanId` dan `konversi` juga tidak diteruskan ke `AddToCart` sehingga pemotongan stok untuk item konversi menjadi salah (hanya terpotong 1, bukan sesuai nilai konversi).
@@ -454,6 +465,11 @@ Current: **1.7.3**
 - **Files**: lib/presentation/pages/shared/produk_form_page.dart
 - **Date**: 2026-06-03
 
+
+### Refactor: Android Cleanup — Hapus semua kode & layout Android, fokus Windows Desktop
+- **Deskripsi**: Membersihkan seluruh kode Android-only yang tersisa setelah fork dari `tokodedy`. Meliputi: hapus folder `android/` (build.gradle, MainActivity.kt, AndroidManifest.xml, resources), comment out package Android-only di pubspec (`flutter_blue_plus`, `mobile_scanner`, `flutter_image_compress`, `workmanager`, `open_filex`), rewrite `BluetoothPrinterService` jadi stub, ganti `barcode_scanner_widget.dart` dari kamera ke input manual, hapus Bluetooth option di `PrinterSettingsPage`, hapus permission handler & device_info_plus dari `cashier_page.dart`, ganti `UpdateService` dari APK ke .exe, hapus Workmanager/Platform checks di `main.dart`, dan regenerate injection config.
+- **Files**: Seluruh folder `android/` dihapus; `pubspec.yaml`, `main.dart`, `bluetooth_printer_service.dart`, `barcode_scanner_widget.dart`, `printer_settings_page.dart`, `cashier_page.dart`, `injection.dart`, `update_service.dart`, `produk_form_page.dart`, `settings_page.dart`, `AGENTS.md`
+- **Date**: 2026-06-11
 
 ### Bug: Produk — Duplikat Satuan setelah import data
 - **Root cause**: Tiga penyebab ditemukan: (1) _onUpdateProduk di produk_bloc.dart menggunakan strategi *delete-all + reinsert*, sehingga jika Supabase background sync (pull()) terjadi di jeda antara delete dan insert, satuan lama balik lagi dari cloud → duplikat. (2) _saveSatuanKeProduk di pembelian_form_page.dart langsung ddSatuan() tanpa cek apakah satuan dengan nama yang sama sudah ada di produk. (3) initState di produk_form_page.dart membuat satuan dummy jika satuanList kosong — kalau disimpan, satuan asli Supabase kembali via pull → duplikat.

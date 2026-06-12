@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:equatable/equatable.dart';
-import 'package:tokodedy/domain/usecases/transaksi/buat_transaksi.dart';
+import 'package:tokodedypc/domain/usecases/transaksi/buat_transaksi.dart';
 
 void main() {
   group('CartItem — subtotal & diskon', () {

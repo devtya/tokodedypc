@@ -12,8 +12,11 @@ import '../../blocs/transaksi/transaksi_event.dart';
 import '../../blocs/transaksi/transaksi_state.dart';
 import 'share_receipt_page.dart';
 
+/// Widget yang bisa ditampilkan baik sebagai Scaffold page maupun
+/// sebagai konten di dalam Dialog (isDialog = true).
 class TransaksiDetailPage extends StatefulWidget {
   final String transaksiId;
+
   const TransaksiDetailPage({super.key, required this.transaksiId});
 
   @override
@@ -21,11 +24,7 @@ class TransaksiDetailPage extends StatefulWidget {
 }
 
 class _TransaksiDetailPageState extends State<TransaksiDetailPage> {
-  final _currency = NumberFormat.currency(
-    locale: 'id',
-    symbol: 'Rp',
-    decimalDigits: 0,
-  );
+  final _currency = NumberFormat.currency(locale: 'id', symbol: 'Rp', decimalDigits: 0);
   final _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
   bool _isPrinting = false;
 
@@ -37,10 +36,7 @@ class _TransaksiDetailPageState extends State<TransaksiDetailPage> {
 
   Future<void> _printReceipt() async {
     final state = context.read<TransaksiBloc>().state;
-    final t = state.maybeWhen(
-      detailLoaded: (transaksi) => transaksi,
-      orElse: () => null,
-    );
+    final t = state.maybeWhen(detailLoaded: (transaksi) => transaksi, orElse: () => null);
     if (t == null) return;
 
     final messenger = ScaffoldMessenger.of(context);
@@ -56,10 +52,8 @@ class _TransaksiDetailPageState extends State<TransaksiDetailPage> {
     }
 
     setState(() => _isPrinting = true);
-
     try {
       final items = t.items ?? [];
-
       final receiptItems = items
           .map((item) => ReceiptItem(
                 nama: item.namaProduk ?? 'Produk #${item.produkId}',
@@ -84,23 +78,13 @@ class _TransaksiDetailPageState extends State<TransaksiDetailPage> {
 
       final printer = sl<PrinterService>();
       final success = await printer.printReceipt(receipt);
-
       if (mounted) {
-        if (success) {
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text('Nota berhasil dicetak'),
-              backgroundColor: AppTheme.primaryGreen,
-            ),
-          );
-        } else {
-          messenger.showSnackBar(
-            const SnackBar(
-              content: Text('Gagal mencetak nota'),
-              backgroundColor: AppTheme.warningRed,
-            ),
-          );
-        }
+        messenger.showSnackBar(
+          SnackBar(
+            content: Text(success ? 'Nota berhasil dicetak' : 'Gagal mencetak nota'),
+            backgroundColor: success ? AppTheme.primaryGreen : AppTheme.warningRed,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
@@ -112,70 +96,86 @@ class _TransaksiDetailPageState extends State<TransaksiDetailPage> {
         );
       }
     }
-
     if (mounted) setState(() => _isPrinting = false);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Transparent AppBar — berfungsi sebagai titlebar saat dalam Dialog
       appBar: AppBar(
-        title: Text('Transaksi #${widget.transaksiId}'),
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        titleSpacing: 16,
+        title: Text(
+          'Transaksi #${widget.transaksiId.toString().substring(0, 8)}',
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
             icon: _isPrinting
                 ? const SizedBox(
-                    width: 20,
-                    height: 20,
+                    width: 18, height: 18,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
-                : const Icon(Icons.print),
+                : const Icon(Icons.print_rounded, size: 20),
             tooltip: 'Cetak Nota',
             onPressed: _isPrinting ? null : _printReceipt,
           ),
           BlocBuilder<TransaksiBloc, TransaksiState>(
             builder: (context, state) {
               return state.maybeWhen(
-                detailLoaded: (t) {
-                  return IconButton(
-                    icon: const Icon(Icons.share),
-                    tooltip: 'Bagikan Nota',
-                    onPressed: () {
-                      final items = t.items ?? [];
-                      final settings = sl<PrinterSettings>();
-                      final receiptItems = items
-                          .map((item) => ReceiptItem(
-                                nama: item.namaProduk ?? 'Produk #${item.produkId}',
-                                jumlah: item.jumlah,
-                                harga: item.hargaSatuan,
-                              ))
-                          .toList();
-                      final tanggal = DateFormat('dd/MM/yyyy HH:mm').format(t.createdAt ?? DateTime.now());
-                      final receipt = ReceiptData(
-                        namaToko: settings.namaToko,
-                        alamatToko: settings.alamatToko,
-                        transaksiId: t.id ?? widget.transaksiId,
-                        tanggal: tanggal,
-                        items: receiptItems,
-                        subtotal: t.totalHarga,
-                        totalBayar: t.jumlahBayar,
-                        kembalian: t.kembalian,
-                        lebarKertas: settings.lebarKertas,
-                        fontSize: settings.fontSize,
-                      );
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => ShareReceiptPage(receipt: receipt),
+                detailLoaded: (t) => IconButton(
+                  icon: const Icon(Icons.share_rounded, size: 20),
+                  tooltip: 'Bagikan Nota',
+                  onPressed: () {
+                    final items = t.items ?? [];
+                    final settings = sl<PrinterSettings>();
+                    final receiptItems = items
+                        .map((item) => ReceiptItem(
+                              nama: item.namaProduk ?? 'Produk #${item.produkId}',
+                              jumlah: item.jumlah,
+                              harga: item.hargaSatuan,
+                            ))
+                        .toList();
+                    final tanggal = DateFormat('dd/MM/yyyy HH:mm')
+                        .format(t.createdAt ?? DateTime.now());
+                    final receipt = ReceiptData(
+                      namaToko: settings.namaToko,
+                      alamatToko: settings.alamatToko,
+                      transaksiId: t.id ?? widget.transaksiId,
+                      tanggal: tanggal,
+                      items: receiptItems,
+                      subtotal: t.totalHarga,
+                      totalBayar: t.jumlahBayar,
+                      kembalian: t.kembalian,
+                      lebarKertas: settings.lebarKertas,
+                      fontSize: settings.fontSize,
+                    );
+                    showDialog(
+                      context: context,
+                      builder: (_) => Dialog(
+                        clipBehavior: Clip.antiAlias,
+                        child: SizedBox(
+                          width: 450,
+                          height: 650,
+                          child: ShareReceiptPage(receipt: receipt),
                         ),
-                      );
-                    },
-                  );
-                },
+                      ),
+                    );
+                  },
+                ),
                 orElse: () => const SizedBox(),
               );
             },
           ),
+          IconButton(
+            icon: const Icon(Icons.close, size: 20),
+            tooltip: 'Tutup',
+            onPressed: () => Navigator.of(context).pop(),
+          ),
+          const SizedBox(width: 4),
         ],
       ),
       body: BlocBuilder<TransaksiBloc, TransaksiState>(
@@ -188,10 +188,11 @@ class _TransaksiDetailPageState extends State<TransaksiDetailPage> {
               final isHutang = t.status == 'hutang';
 
               return SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Status + tanggal row
                     Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16),
@@ -200,34 +201,35 @@ class _TransaksiDetailPageState extends State<TransaksiDetailPage> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                const Text(
-                                  'Status:',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                Chip(
-                                  label: Text(
+                                const Text('Status:', style: TextStyle(fontWeight: FontWeight.w600)),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: isHutang
+                                        ? AppTheme.warningOrange.withValues(alpha: 0.12)
+                                        : AppTheme.primaryGreen.withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  child: Text(
                                     isHutang ? 'Hutang' : 'Lunas',
                                     style: TextStyle(
-                                      color: isHutang
-                                          ? AppTheme.warningOrange
-                                          : AppTheme.primaryGreen,
-                                      fontSize: 12,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: isHutang ? AppTheme.warningOrange : AppTheme.primaryGreen,
                                     ),
                                   ),
-                                  backgroundColor: isHutang
-                                      ? AppTheme.warningOrange.withValues(
-                                          alpha: 0.15,
-                                        )
-                                      : AppTheme.lightGreen,
                                 ),
                               ],
                             ),
-                            const Divider(),
+                            const Divider(height: 20),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 const Text('Tanggal:'),
-                                Text(_dateFormat.format(t.createdAt!)),
+                                Text(
+                                  t.createdAt != null ? _dateFormat.format(t.createdAt!) : '-',
+                                  style: TextStyle(color: AppTheme.neutralGrey),
+                                ),
                               ],
                             ),
                           ],
@@ -235,32 +237,25 @@ class _TransaksiDetailPageState extends State<TransaksiDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    const Text(
-                      'Item',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
+                    const Text('Item Pembelian', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 8),
                     ...items.map(
                       (item) => Card(
                         margin: const EdgeInsets.only(bottom: 4),
                         child: Padding(
-                          padding: const EdgeInsets.all(12),
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                           child: Row(
                             children: [
                               Expanded(
                                 child: Text(
                                   item.namaProduk ?? 'Produk #${item.produkId}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w600,
-                                  ),
+                                  style: const TextStyle(fontWeight: FontWeight.w600),
                                 ),
                               ),
-                              Text('${item.jumlah}x '),
+                              Text('${item.jumlah}× ', style: TextStyle(color: AppTheme.neutralGrey)),
                               Text(
                                 _currency.format(item.subtotal),
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                                style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ],
                           ),
@@ -268,17 +263,18 @@ class _TransaksiDetailPageState extends State<TransaksiDetailPage> {
                       ),
                     ),
                     const SizedBox(height: 16),
+                    // Total summary
                     Card(
                       color: AppTheme.lightGreen,
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Column(
                           children: [
-                            _row('Total', _currency.format(t.totalHarga)),
-                            const SizedBox(height: 4),
-                            _row('Bayar', _currency.format(t.jumlahBayar)),
-                            const SizedBox(height: 4),
-                            _row('Kembali', _currency.format(t.kembalian)),
+                            _summaryRow('Total', _currency.format(t.totalHarga), isBold: false),
+                            const SizedBox(height: 8),
+                            _summaryRow('Dibayar', _currency.format(t.jumlahBayar), isBold: false),
+                            const Divider(),
+                            _summaryRow('Kembali', _currency.format(t.kembalian), isBold: true),
                           ],
                         ),
                       ),
@@ -294,14 +290,18 @@ class _TransaksiDetailPageState extends State<TransaksiDetailPage> {
     );
   }
 
-  Widget _row(String label, String value) {
+  Widget _summaryRow(String label, String value, {required bool isBold}) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 16)),
+        Text(label, style: TextStyle(fontSize: 15, fontWeight: isBold ? FontWeight.w700 : FontWeight.normal)),
         Text(
           value,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: TextStyle(
+            fontSize: 15,
+            fontWeight: isBold ? FontWeight.w800 : FontWeight.bold,
+            color: isBold ? AppTheme.primaryGreen : null,
+          ),
         ),
       ],
     );

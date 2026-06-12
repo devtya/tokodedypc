@@ -57,9 +57,16 @@ class SyncIndicator extends StatelessWidget {
         return IconButton(
           icon: Icon(icon, color: color, size: 20),
           onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => const SyncLogPage()),
+            showDialog(
+              context: context,
+              builder: (_) => Dialog(
+                clipBehavior: Clip.antiAlias,
+                child: SizedBox(
+                  width: 500,
+                  height: 600,
+                  child: const SyncLogPage(),
+                ),
+              ),
             );
           },
           onLongPress: () =>

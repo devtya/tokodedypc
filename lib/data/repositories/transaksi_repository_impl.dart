@@ -22,6 +22,7 @@ class TransaksiRepositoryImpl implements TransaksiRepository {
       jumlahBayar: data.jumlahBayar,
       kembalian: data.kembalian,
       status: data.status,
+      diskonGlobal: data.diskonGlobal,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
     );
@@ -67,6 +68,7 @@ class TransaksiRepositoryImpl implements TransaksiRepository {
             jumlahBayar: Value(transaksi.jumlahBayar),
             kembalian: Value(transaksi.kembalian),
             status: Value(transaksi.status),
+            diskonGlobal: Value(transaksi.diskonGlobal),
           ),
         );
 
@@ -78,6 +80,7 @@ class TransaksiRepositoryImpl implements TransaksiRepository {
       'jumlah_bayar': transaksi.jumlahBayar,
       'kembalian': transaksi.kembalian,
       'status': transaksi.status,
+      'diskon_global': transaksi.diskonGlobal,
     });
 
     return id;

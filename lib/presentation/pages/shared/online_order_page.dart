@@ -117,56 +117,36 @@ class _OnlineOrderPageState extends State<OnlineOrderPage> {
 
               return TabBarView(
                 children: [
-                  _OrderListView(orders: pendingOrders, emptyMessage: 'Tidak ada pesanan baru', onRefresh: _onRefresh),
-                  _OrderListView(orders: processingOrders, emptyMessage: 'Tidak ada pesanan yang sedang diproses', onRefresh: _onRefresh),
-                  _OrderListView(orders: readyOrders, emptyMessage: 'Tidak ada pesanan yang siap', onRefresh: _onRefresh),
-                  _HistoryListView(orders: state.historyOrders, onRefresh: _onRefresh),
+                  _OrderListView(orders: pendingOrders, emptyMessage: 'Tidak ada pesanan baru'),
+                  _OrderListView(orders: processingOrders, emptyMessage: 'Tidak ada pesanan yang sedang diproses'),
+                  _OrderListView(orders: readyOrders, emptyMessage: 'Tidak ada pesanan yang siap'),
+                  _HistoryListView(orders: state.historyOrders),
                 ],
               );
             } else if (state is OnlineOrderError) {
-              return RefreshIndicator(
-                onRefresh: _onRefresh,
-                child: ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    SizedBox(
-                      height: MediaQuery.of(context).size.height * 0.5,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                          const SizedBox(height: 16),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 32),
-                            child: Text(state.message, textAlign: TextAlign.center),
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              context.read<OnlineOrderBloc>().add(LoadPendingOnlineOrders());
-                            },
-                            child: const Text('Coba Lagi'),
-                          ),
-                        ],
-                      ),
+                    const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 32),
+                      child: Text(state.message, textAlign: TextAlign.center),
+                    ),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () {
+                        context.read<OnlineOrderBloc>().add(LoadPendingOnlineOrders());
+                      },
+                      child: const Text('Coba Lagi'),
                     ),
                   ],
                 ),
               );
             }
-            // Initial / loading state — tampilkan RefreshIndicator agar bisa ditarik
-            return RefreshIndicator(
-              onRefresh: _onRefresh,
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  SizedBox(
-                    height: MediaQuery.of(context).size.height * 0.5,
-                    child: const Center(child: CircularProgressIndicator()),
-                  ),
-                ],
-              ),
-            );
+            // Initial / loading state
+            return const Center(child: CircularProgressIndicator());
           },
         ),
       ),
@@ -177,57 +157,35 @@ class _OnlineOrderPageState extends State<OnlineOrderPage> {
 class _OrderListView extends StatelessWidget {
   final List<OnlineOrder> orders;
   final String emptyMessage;
-  final Future<void> Function() onRefresh;
 
   const _OrderListView({
     required this.orders,
     required this.emptyMessage,
-    required this.onRefresh,
   });
 
   @override
   Widget build(BuildContext context) {
     if (orders.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: onRefresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.6,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.inbox, size: 64, color: Theme.of(context).disabledColor),
-                    const SizedBox(height: 16),
-                    Text(emptyMessage, style: TextStyle(color: Theme.of(context).disabledColor)),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tarik ke bawah untuk refresh',
-                      style: TextStyle(fontSize: 12, color: Theme.of(context).disabledColor),
-                    ),
-                  ],
-                ),
-              ),
-            ),
+            Icon(Icons.inbox, size: 64, color: Theme.of(context).disabledColor),
+            const SizedBox(height: 16),
+            Text(emptyMessage, style: TextStyle(color: Theme.of(context).disabledColor)),
           ],
         ),
       );
     }
 
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      child: ListView.separated(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        itemCount: orders.length,
-        separatorBuilder: (context, index) => const SizedBox(height: 16),
-        itemBuilder: (context, index) {
-          final order = orders[index];
-          return _OrderCard(order: order);
-        },
-      ),
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: orders.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 16),
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        return _OrderCard(order: order);
+      },
     );
   }
 }
@@ -238,39 +196,22 @@ class _OrderListView extends StatelessWidget {
 
 class _HistoryListView extends StatelessWidget {
   final List<OnlineOrder> orders;
-  final Future<void> Function() onRefresh;
 
-  const _HistoryListView({required this.orders, required this.onRefresh});
+  const _HistoryListView({required this.orders});
 
   @override
   Widget build(BuildContext context) {
     if (orders.isEmpty) {
-      return RefreshIndicator(
-        onRefresh: onRefresh,
-        child: ListView(
-          physics: const AlwaysScrollableScrollPhysics(),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            SizedBox(
-              height: MediaQuery.of(context).size.height * 0.6,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.history, size: 64, color: Theme.of(context).disabledColor),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Tidak ada riwayat pesanan\n(14 hari terakhir)',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Theme.of(context).disabledColor),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Tarik ke bawah untuk refresh',
-                      style: TextStyle(fontSize: 12, color: Theme.of(context).disabledColor),
-                    ),
-                  ],
-                ),
-              ),
+            Icon(Icons.history, size: 64, color: Theme.of(context).disabledColor),
+            const SizedBox(height: 16),
+            Text(
+              'Tidak ada riwayat pesanan\n(14 hari terakhir)',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Theme.of(context).disabledColor),
             ),
           ],
         ),
@@ -279,18 +220,15 @@ class _HistoryListView extends StatelessWidget {
 
     final formatCurrency = NumberFormat.currency(locale: 'id_ID', symbol: 'Rp ', decimalDigits: 0);
 
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      child: ListView.separated(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        itemCount: orders.length,
-        separatorBuilder: (_, _) => const SizedBox(height: 12),
-        itemBuilder: (context, index) {
-          final order = orders[index];
-          final isCompleted = order.status == 'completed';
-          final statusColor = isCompleted ? Colors.green : Colors.red;
-          final statusLabel = isCompleted ? '✅ Selesai' : '❌ Dibatalkan';
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: orders.length,
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final order = orders[index];
+        final isCompleted = order.status == 'completed';
+        final statusColor = isCompleted ? Colors.green : Colors.red;
+        final statusLabel = isCompleted ? '✅ Selesai' : '❌ Dibatalkan';
 
           return Card(
             elevation: 1,
@@ -429,8 +367,7 @@ class _HistoryListView extends StatelessWidget {
             ),
           );
         },
-      ),
-    );
+      );
   }
 }
 

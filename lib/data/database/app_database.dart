@@ -66,7 +66,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -77,6 +77,9 @@ class AppDatabase extends _$AppDatabase {
       if (from < 2) {
         await m.addColumn(produkTable, produkTable.isArchived);
         await m.createTable(riwayatPerubahanProdukTable);
+      }
+      if (from < 3) {
+        await m.addColumn(transaksiTable, transaksiTable.diskonGlobal);
       }
     },
     beforeOpen: (details) async {

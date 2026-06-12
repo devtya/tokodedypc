@@ -4,7 +4,6 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
-import 'package:open_filex/open_filex.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 
@@ -21,7 +20,7 @@ class UpdateInfo {
 class UpdateService {
   String repoOwner = 'devtya';
   String repoName = 'tokodedy';
-  static const String _assetName = 'app-release.apk';
+  static const String _assetName = 'tokodedy-setup.exe';
 
   Future<UpdateInfo?> checkForUpdate() async {
     try {
@@ -48,18 +47,16 @@ class UpdateService {
       String? downloadUrl;
       String? foundAssetName;
 
-      // Cari aset dengan nama tokodedy*.apk
       for (final asset in assets) {
         final name = asset['name'] as String? ?? '';
         final lowerName = name.toLowerCase();
-        if (lowerName.startsWith('tokodedy') && lowerName.endsWith('.apk')) {
+        if (lowerName.startsWith('tokodedy') && lowerName.endsWith('.exe')) {
           downloadUrl = asset['browser_download_url'] as String?;
           foundAssetName = name;
           break;
         }
       }
 
-      // Fallback ke app-release.apk
       if (downloadUrl == null) {
         for (final asset in assets) {
           final name = asset['name'] as String? ?? '';
@@ -84,7 +81,7 @@ class UpdateService {
     }
   }
 
-  Future<String> downloadApk(
+  Future<String> downloadUpdate(
     String url, {
     String? assetName,
     void Function(double progress)? onProgress,
@@ -110,12 +107,11 @@ class UpdateService {
     return file.path;
   }
 
-  Future<void> installApk(String filePath) async {
-    await OpenFilex.open(filePath);
+  Future<void> installUpdate(String filePath) async {
+    await Process.run(filePath, [], runInShell: true);
   }
 
   List<int> _extractVersion(String versionString) {
-    // Cari pola x.y.z, opsional diikuti oleh +buildNumber, -buildNumber, atau _buildNumber
     final RegExp regex = RegExp(r'(\d+)\.(\d+)\.(\d+)(?:[\+_\-](\d+))?');
     final match = regex.firstMatch(versionString);
     if (match != null) {

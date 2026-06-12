@@ -17,6 +17,8 @@ import 'printer_settings_page.dart';
 import 'user_management_page.dart';
 import '../../../domain/repositories/produk_repository.dart';
 
+enum _SettingsSection { tampilan, printer, pengguna, pin, sync, tentang }
+
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
 
@@ -28,6 +30,7 @@ class _SettingsPageState extends State<SettingsPage> {
   final _updateService = sl<UpdateService>();
   String _appVersion = '';
   bool _checkingUpdate = false;
+  _SettingsSection _activeSection = _SettingsSection.tampilan;
 
   @override
   void initState() {
@@ -112,10 +115,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         minHeight: 8,
                       ),
                       const SizedBox(height: 16),
-                      Text(
-                        '$pct% selesai',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
+                      Text('$pct% selesai',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                       const SizedBox(height: 8),
                       const Text(
                         'Harap jangan tutup aplikasi selama proses unduh berlangsung.',
@@ -131,7 +132,7 @@ class _SettingsPageState extends State<SettingsPage> {
         );
 
         try {
-          final path = await _updateService.downloadApk(
+          final path = await _updateService.downloadUpdate(
             update.url,
             assetName: update.assetName,
             onProgress: (progress) {
@@ -141,16 +142,16 @@ class _SettingsPageState extends State<SettingsPage> {
 
           progressController.close();
           if (mounted) {
-            Navigator.pop(context); // Tutup dialog progress
+            Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Download selesai, membuka installer...')),
             );
           }
-          await _updateService.installApk(path);
+          await _updateService.installUpdate(path);
         } catch (err) {
           progressController.close();
           if (mounted) {
-            Navigator.pop(context); // Tutup dialog progress
+            Navigator.pop(context);
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text('Gagal mengunduh pembaruan: $err')),
             );
@@ -169,372 +170,437 @@ class _SettingsPageState extends State<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final navItems = [
+      (_SettingsSection.tampilan, Icons.palette_rounded, 'Tampilan'),
+      (_SettingsSection.printer, Icons.print_rounded, 'Printer'),
+      (_SettingsSection.pengguna, Icons.people_rounded, 'Pengguna'),
+      (_SettingsSection.pin, Icons.lock_rounded, 'PIN & Keamanan'),
+      (_SettingsSection.sync, Icons.cloud_sync_rounded, 'Sinkronisasi'),
+      (_SettingsSection.tentang, Icons.info_rounded, 'Tentang Aplikasi'),
+    ];
 
-    return Scaffold(
-      appBar: AppBar(title: const Text('Pengaturan')),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          // --- Toko Info ---
-          Card(
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Fitur dalam pengembangan')),
-                );
-              },
-              child: Padding(
+    return Row(
+      children: [
+        // ── Kolom Kiri: Nav ─────────────────────────────────────────────
+        Container(
+          width: 220,
+          color: isDark ? const Color(0xFF1B1E1C) : const Color(0xFFF3F7F4),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
+                child: Text(
+                  'PENGATURAN',
+                  style: TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 1.2,
+                    color: AppTheme.neutralGrey,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  children: navItems.map((item) {
+                    final (section, icon, label) = item;
+                    final isActive = _activeSection == section;
+                    return _NavItem(
+                      icon: icon,
+                      label: label,
+                      isActive: isActive,
+                      onTap: () => setState(() => _activeSection = section),
+                    );
+                  }).toList(),
+                ),
+              ),
+              // Logout button
+              Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        title: const Text('Logout'),
+                        content: const Text('Apakah Anda yakin ingin keluar?'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: const Text('Batal'),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              context.read<AuthBloc>().add(LogoutEvent());
+                              Navigator.pushAndRemoveUntil(
+                                context,
+                                MaterialPageRoute(builder: (_) => const LoginPage()),
+                                (route) => false,
+                              );
+                            },
+                            style: TextButton.styleFrom(
+                              foregroundColor: AppTheme.warningRed,
+                            ),
+                            child: const Text('Logout'),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.logout, size: 16, color: AppTheme.warningRed),
+                  label: const Text('Logout', style: TextStyle(color: AppTheme.warningRed)),
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppTheme.warningRed),
+                    minimumSize: const Size(double.infinity, 40),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        // Divider
+        VerticalDivider(width: 1, color: isDark ? Colors.white12 : const Color(0xFFE5E7EB)),
+
+        // ── Kolom Kanan: Content ─────────────────────────────────────────
+        Expanded(
+          child: _buildContent(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildContent() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(32),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 700),
+        child: switch (_activeSection) {
+          _SettingsSection.tampilan => _buildTampilan(),
+          _SettingsSection.printer => const PrinterSettingsPage(),
+          _SettingsSection.pengguna => _buildPengguna(),
+          _SettingsSection.pin => const PinSettingsPage(),
+          _SettingsSection.sync => _buildSync(),
+          _SettingsSection.tentang => _buildTentang(),
+        },
+      ),
+    );
+  }
+
+  Widget _buildTampilan() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Tema Aplikasi', Icons.palette_rounded),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: BlocBuilder<ThemeCubit, ThemeMode>(
+              builder: (context, themeMode) {
+                return Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    Text(
+                      'Mode saat ini: ${_themeLabel(themeMode)}',
+                      style: TextStyle(fontSize: 13, color: AppTheme.neutralGrey),
+                    ),
+                    const SizedBox(height: 16),
+                    SegmentedButton<ThemeMode>(
+                      segments: const [
+                        ButtonSegment(
+                          value: ThemeMode.system,
+                          label: Text('Sistem'),
+                          icon: Icon(Icons.settings_brightness),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.light,
+                          label: Text('Terang'),
+                          icon: Icon(Icons.light_mode),
+                        ),
+                        ButtonSegment(
+                          value: ThemeMode.dark,
+                          label: Text('Gelap'),
+                          icon: Icon(Icons.dark_mode),
+                        ),
+                      ],
+                      selected: {themeMode},
+                      onSelectionChanged: (modes) {
+                        context.read<ThemeCubit>().setTheme(modes.first);
+                      },
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPengguna() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Manajemen Pengguna', Icons.people_rounded),
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 500,
+          child: const UserManagementPage(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSync() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Sinkronisasi Cloud', Icons.cloud_sync_rounded),
+        const SizedBox(height: 16),
+        BlocConsumer<SyncBloc, SyncState>(
+          listener: (context, state) {
+            if (state is SyncSuccess) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Sinkronisasi data ke cloud BERHASIL!'),
+                  backgroundColor: AppTheme.primaryGreen,
+                ),
+              );
+            } else if (state is SyncError) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Sinkronisasi GAGAL: ${state.message}'),
+                  backgroundColor: AppTheme.warningRed,
+                ),
+              );
+            }
+          },
+          builder: (context, state) {
+            final isSyncing = state is SyncInProgress;
+            final isError = state is SyncError;
+            final lastSync = state is SyncIdle
+                ? state.lastSync
+                : state is SyncSuccess
+                    ? state.lastSync
+                    : state is SyncError
+                        ? state.lastSync
+                        : null;
+
+            String subtitle;
+            if (isSyncing) {
+              subtitle = 'Sedang menyelaraskan data dengan cloud...';
+            } else if (isError) {
+              subtitle = 'Gagal: ${state.message}';
+            } else if (lastSync != null) {
+              final diff = DateTime.now().difference(lastSync);
+              String ago;
+              if (diff.inSeconds < 60) {
+                ago = '${diff.inSeconds} detik yang lalu';
+              } else if (diff.inMinutes < 60) {
+                ago = '${diff.inMinutes} menit yang lalu';
+              } else {
+                ago = DateFormat('HH:mm, dd/MM').format(lastSync);
+              }
+              subtitle = 'Terakhir sinkron: $ago';
+            } else {
+              subtitle = 'Kirim data lokal & unduh data dari cloud';
+            }
+
+            return Column(
+              children: [
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Icon(Icons.store, color: Colors.green),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-'Toko Saya',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
+                        Row(
+                          children: [
+                            isSyncing
+                                ? const SizedBox(
+                                    width: 24,
+                                    height: 24,
+                                    child: CircularProgressIndicator(strokeWidth: 2, color: AppTheme.primaryGreen),
+                                  )
+                                : Icon(
+                                    isError ? Icons.cloud_off : Icons.cloud_done,
+                                    color: isError ? AppTheme.warningRed : AppTheme.primaryGreen,
+                                    size: 28,
+                                  ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Text('Status Sinkronisasi',
+                                      style: TextStyle(fontWeight: FontWeight.w600)),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    subtitle,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isError ? AppTheme.warningRed : AppTheme.neutralGrey,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: isSyncing
+                                ? null
+                                : () => context.read<SyncBloc>().add(const SyncTriggered()),
+                            icon: const Icon(Icons.sync, size: 16),
+                            label: Text(isSyncing ? 'Sedang Sinkron...' : 'Sinkronkan Sekarang'),
                           ),
                         ),
-                        const Icon(Icons.chevron_right, size: 20, color: Colors.grey),
+                        const SizedBox(height: 12),
+                        // Bersihkan duplikat satuan
+                        OutlinedButton.icon(
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Bersihkan Duplikat?'),
+                                content: const Text(
+                                  'Fungsi ini akan memindai seluruh produk dan menghapus satuan yang namanya dobel.\n\n'
+                                  'Satuan yang sudah pernah dipakai di transaksi TIDAK akan dihapus.',
+                                ),
+                                actions: [
+                                  TextButton(
+                                      onPressed: () => Navigator.pop(ctx, false),
+                                      child: const Text('Batal')),
+                                  TextButton(
+                                      onPressed: () => Navigator.pop(ctx, true),
+                                      style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                                      child: const Text('Lanjutkan')),
+                                ],
+                              ),
+                            );
+                            if (confirm == true && context.mounted) {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (_) => const Center(child: CircularProgressIndicator()),
+                              );
+                              try {
+                                final repo = sl<ProdukRepository>();
+                                final result = await repo.cleanupDuplicateSatuan();
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Selesai! Dihapus: ${result.deleted}, Dilindungi: ${result.protected}',
+                                      ),
+                                      backgroundColor: Colors.blue,
+                                    ),
+                                  );
+                                }
+                              } catch (e) {
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Gagal: $e')),
+                                  );
+                                }
+                              }
+                            }
+                          },
+                          icon: const Icon(Icons.cleaning_services, size: 16),
+                          label: const Text('Bersihkan Duplikat Satuan'),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTentang() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionTitle('Tentang Aplikasi', Icons.info_rounded),
+        const SizedBox(height: 16),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryGreen,
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      child: const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 28),
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Tokodedy PC',
+                            style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                        Text(
+                          _appVersion.isNotEmpty ? 'Versi $_appVersion' : 'Memuat versi...',
+                          style: TextStyle(color: AppTheme.neutralGrey),
+                        ),
                       ],
                     ),
                   ],
                 ),
-              ),
+                const Divider(height: 32),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: Icon(
+                    Icons.system_update,
+                    color: _checkingUpdate ? Colors.grey : AppTheme.primaryGreen,
+                  ),
+                  title: Text(_checkingUpdate ? 'Memeriksa pembaruan...' : 'Periksa Pembaruan'),
+                  subtitle: const Text('Cek versi terbaru aplikasi'),
+                  trailing: _checkingUpdate
+                      ? const SizedBox(
+                          width: 20, height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.chevron_right),
+                  onTap: _checkingUpdate ? null : _checkUpdate,
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
+        ),
+      ],
+    );
+  }
 
-          // --- Theme ---
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Tema Aplikasi',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                  ),
-                  const SizedBox(height: 4),
-                  BlocBuilder<ThemeCubit, ThemeMode>(
-                    builder: (context, themeMode) {
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _themeLabel(themeMode),
-                            style: const TextStyle(fontSize: 13, color: Colors.grey),
-                          ),
-                          const SizedBox(height: 16),
-                          SegmentedButton<ThemeMode>(
-                            segments: const [
-                              ButtonSegment(
-                                value: ThemeMode.system,
-                                label: Text('System'),
-                                icon: Icon(Icons.settings_brightness),
-                              ),
-                              ButtonSegment(
-                                value: ThemeMode.light,
-                                label: Text('Terang'),
-                                icon: Icon(Icons.light_mode),
-                              ),
-                              ButtonSegment(
-                                value: ThemeMode.dark,
-                                label: Text('Gelap'),
-                                icon: Icon(Icons.dark_mode),
-                              ),
-                            ],
-                            selected: {themeMode},
-                            onSelectionChanged: (modes) {
-                              context.read<ThemeCubit>().setTheme(modes.first);
-                            },
-                          ),
-                        ],
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // --- Printer & User Management ---
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.print, color: AppTheme.primaryGreen),
-                    title: const Text('Pengaturan Printer'),
-                    subtitle: const Text('Printer thermal USB/Bluetooth'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PrinterSettingsPage()),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.people, color: AppTheme.primaryGreen),
-                    title: const Text('Manajemen Pengguna'),
-                    subtitle: const Text('Kelola admin dan kasir'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const UserManagementPage()),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.lock_outline, color: AppTheme.primaryGreen),
-                    title: const Text('Pengaturan PIN'),
-                    subtitle: const Text('Atur PIN & sidik jari untuk login'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(builder: (_) => const PinSettingsPage()),
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  BlocConsumer<SyncBloc, SyncState>(
-                    listener: (context, state) {
-                      if (state is SyncSuccess) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Sinkronisasi data ke cloud BERHASIL!'),
-                            backgroundColor: AppTheme.primaryGreen,
-                          ),
-                        );
-                      } else if (state is SyncError) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text('Sinkronisasi GAGAL: ${state.message}'),
-                            backgroundColor: AppTheme.warningRed,
-                          ),
-                        );
-                      }
-                    },
-                    builder: (context, state) {
-                      final isSyncing = state is SyncInProgress;
-                      final isError = state is SyncError;
-                      final lastSync = state is SyncIdle
-                          ? state.lastSync
-                          : state is SyncSuccess
-                              ? state.lastSync
-                              : state is SyncError
-                                  ? state.lastSync
-                                  : null;
-
-                      String subtitle;
-                      if (isSyncing) {
-                        subtitle = 'Sedang menyelaraskan data dengan cloud...';
-                      } else if (isError) {
-                        subtitle = 'Gagal: ${state.message}';
-                      } else if (lastSync != null) {
-                        final diff = DateTime.now().difference(lastSync);
-                        String ago;
-                        if (diff.inSeconds < 60) {
-                          ago = '${diff.inSeconds} detik yang lalu';
-                        } else if (diff.inMinutes < 60) {
-                          ago = '${diff.inMinutes} menit yang lalu';
-                        } else {
-                          ago = DateFormat('HH:mm, dd/MM').format(lastSync);
-                        }
-                        subtitle = 'Terakhir sinkron: $ago';
-                      } else {
-                        subtitle = 'Kirim data lokal & unduh data dari cloud';
-                      }
-
-                      return ListTile(
-                        leading: isSyncing
-                            ? const SizedBox(
-                                width: 24,
-                                height: 24,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2,
-                                  color: AppTheme.primaryGreen,
-                                ),
-                              )
-                            : Icon(
-                                isError ? Icons.cloud_off : Icons.cloud_sync,
-                                color: isError ? AppTheme.warningRed : AppTheme.primaryGreen,
-                              ),
-                        title: const Text('Sinkronisasi Cloud'),
-                        subtitle: Text(
-                          subtitle,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isError ? AppTheme.warningRed : null,
-                          ),
-                        ),
-                        trailing: isSyncing
-                            ? const SizedBox.shrink()
-                            : Icon(isError ? Icons.refresh : Icons.sync),
-                        onTap: isSyncing
-                            ? null
-                            : () {
-                                context.read<SyncBloc>().add(const SyncTriggered());
-                              },
-                      );
-                    },
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.cleaning_services, color: Colors.blue),
-                    title: const Text('Bersihkan Duplikat Satuan'),
-                    subtitle: const Text('Hapus satuan produk yang ganda (aman)'),
-                    trailing: const Icon(Icons.chevron_right),
-                    onTap: () async {
-                      final confirm = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Bersihkan Duplikat?'),
-                          content: const Text(
-                            'Fungsi ini akan memindai seluruh produk dan menghapus satuan yang namanya dobel.\n\n'
-                            'Jangan khawatir, satuan yang sudah pernah dipakai di transaksi (kasir/pembelian) TIDAK akan dihapus untuk menjaga riwayat data.',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Batal'),
-                            ),
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                              child: const Text('Lanjutkan'),
-                            ),
-                          ],
-                        ),
-                      );
-
-                      if (confirm == true && context.mounted) {
-                        // Tampilkan loading
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          builder: (_) => const Center(child: CircularProgressIndicator()),
-                        );
-
-                        try {
-                          final repo = sl<ProdukRepository>();
-                          final result = await repo.cleanupDuplicateSatuan();
-                          
-                          if (context.mounted) {
-                            Navigator.pop(context); // Tutup loading
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Selesai! Dihapus: ${result.deleted}, Dilindungi: ${result.protected}',
-                                ),
-                                backgroundColor: Colors.blue,
-                              ),
-                            );
-                          }
-                        } catch (e) {
-                          if (context.mounted) {
-                            Navigator.pop(context); // Tutup loading
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Gagal membersihkan satuan: $e')),
-                            );
-                          }
-                        }
-                      }
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-
-          // --- Info Aplikasi & Logout ---
-          Card(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.info_outline, color: Colors.grey, size: 20),
-                        const SizedBox(width: 8),
-                        Text(
-                          _appVersion.isNotEmpty ? 'Versi $_appVersion' : 'Memuat versi...',
-                          style: const TextStyle(fontSize: 14, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: Icon(
-                      Icons.system_update,
-                      color: _checkingUpdate ? Colors.grey : AppTheme.primaryGreen,
-                    ),
-                    title: Text(_checkingUpdate ? 'Memeriksa...' : 'Periksa Pembaruan'),
-                    trailing: _checkingUpdate
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.chevron_right),
-                    onTap: _checkingUpdate ? null : _checkUpdate,
-                  ),
-
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.logout, color: AppTheme.warningRed),
-                    title: const Text('Logout',
-                        style: TextStyle(color: AppTheme.warningRed)),
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          title: const Text('Logout'),
-                          content: const Text('Apakah Anda yakin ingin keluar?'),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text('Batal'),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                context.read<AuthBloc>().add(LogoutEvent());
-                                Navigator.pushAndRemoveUntil(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => const LoginPage()),
-                                  (route) => false,
-                                );
-                              },
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppTheme.warningRed,
-                              ),
-                              child: const Text('Logout'),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+  Widget _sectionTitle(String title, IconData icon) {
+    return Row(
+      children: [
+        Icon(icon, color: AppTheme.primaryGreen, size: 22),
+        const SizedBox(width: 10),
+        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+      ],
     );
   }
 
@@ -547,5 +613,70 @@ class _SettingsPageState extends State<SettingsPage> {
       case ThemeMode.dark:
         return 'Gelap';
     }
+  }
+}
+
+// ─── Nav Item ─────────────────────────────────────────────────────────────────
+
+class _NavItem extends StatefulWidget {
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final VoidCallback onTap;
+
+  const _NavItem({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    required this.onTap,
+  });
+
+  @override
+  State<_NavItem> createState() => _NavItemState();
+}
+
+class _NavItemState extends State<_NavItem> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hovered = true),
+      onExit: (_) => setState(() => _hovered = false),
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          margin: const EdgeInsets.only(bottom: 2),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: widget.isActive
+                ? AppTheme.primaryGreen.withValues(alpha: 0.15)
+                : _hovered
+                    ? Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.05)
+                    : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                widget.icon,
+                size: 18,
+                color: widget.isActive ? AppTheme.primaryGreen : AppTheme.neutralGrey,
+              ),
+              const SizedBox(width: 10),
+              Text(
+                widget.label,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.normal,
+                  color: widget.isActive ? AppTheme.primaryGreen : null,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

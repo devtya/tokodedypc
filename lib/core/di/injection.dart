@@ -8,7 +8,6 @@ import '../../data/database/app_database.dart';
 import '../../data/services/printer_service.dart';
 import '../../data/services/printer_settings.dart';
 import '../../data/services/network_printer_service.dart';
-import '../../data/services/bluetooth_printer_service.dart';
 
 import 'injection.config.dart';
 
@@ -16,35 +15,17 @@ final sl = GetIt.instance;
 
 void _initPrinterService() {
   final settings = sl<PrinterSettings>();
-  // Self-healing: if type is network but url is a MAC address, fix it
-  if (settings.type == 'network' && settings.url.isNotEmpty && !settings.url.startsWith('http')) {
-    settings.type = 'bluetooth';
-  }
-
-  if (settings.type == 'bluetooth') {
-    sl.registerLazySingleton<PrinterService>(() => sl<BluetoothPrinterService>());
-  } else {
-    sl.registerLazySingleton<PrinterService>(
-      () => NetworkPrinterService(baseUrl: settings.url),
-    );
-  }
+  sl.registerLazySingleton<PrinterService>(
+    () => NetworkPrinterService(baseUrl: settings.url),
+  );
 }
 
 void updatePrinterService() {
   final settings = sl<PrinterSettings>();
-  // Self-healing: if type is network but url is a MAC address, fix it
-  if (settings.type == 'network' && settings.url.isNotEmpty && !settings.url.startsWith('http')) {
-    settings.type = 'bluetooth';
-  }
-
   sl.allowReassignment = true;
-  if (settings.type == 'bluetooth') {
-    sl.registerLazySingleton<PrinterService>(() => sl<BluetoothPrinterService>());
-  } else {
-    sl.registerLazySingleton<PrinterService>(
-      () => NetworkPrinterService(baseUrl: settings.url),
-    );
-  }
+  sl.registerLazySingleton<PrinterService>(
+    () => NetworkPrinterService(baseUrl: settings.url),
+  );
   sl.allowReassignment = false;
 }
 
