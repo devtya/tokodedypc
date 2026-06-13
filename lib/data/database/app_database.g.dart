@@ -3295,6 +3295,17 @@ class $ItemTransaksiTableTable extends ItemTransaksiTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _namaProdukMeta = const VerificationMeta(
+    'namaProduk',
+  );
+  @override
+  late final GeneratedColumn<String> namaProduk = GeneratedColumn<String>(
+    'nama_produk',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _jumlahMeta = const VerificationMeta('jumlah');
   @override
   late final GeneratedColumn<int> jumlah = GeneratedColumn<int>(
@@ -3334,6 +3345,7 @@ class $ItemTransaksiTableTable extends ItemTransaksiTable
     id,
     transaksiId,
     produkId,
+    namaProduk,
     jumlah,
     hargaSatuan,
     subtotal,
@@ -3373,6 +3385,12 @@ class $ItemTransaksiTableTable extends ItemTransaksiTable
       );
     } else if (isInserting) {
       context.missing(_produkIdMeta);
+    }
+    if (data.containsKey('nama_produk')) {
+      context.handle(
+        _namaProdukMeta,
+        namaProduk.isAcceptableOrUnknown(data['nama_produk']!, _namaProdukMeta),
+      );
     }
     if (data.containsKey('jumlah')) {
       context.handle(
@@ -3416,6 +3434,10 @@ class $ItemTransaksiTableTable extends ItemTransaksiTable
         DriftSqlType.string,
         data['${effectivePrefix}produk_id'],
       )!,
+      namaProduk: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nama_produk'],
+      ),
       jumlah: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}jumlah'],
@@ -3442,6 +3464,7 @@ class ItemTransaksiTableData extends DataClass
   final String id;
   final String transaksiId;
   final String produkId;
+  final String? namaProduk;
   final int jumlah;
   final double hargaSatuan;
   final double subtotal;
@@ -3449,6 +3472,7 @@ class ItemTransaksiTableData extends DataClass
     required this.id,
     required this.transaksiId,
     required this.produkId,
+    this.namaProduk,
     required this.jumlah,
     required this.hargaSatuan,
     required this.subtotal,
@@ -3459,6 +3483,9 @@ class ItemTransaksiTableData extends DataClass
     map['id'] = Variable<String>(id);
     map['transaksi_id'] = Variable<String>(transaksiId);
     map['produk_id'] = Variable<String>(produkId);
+    if (!nullToAbsent || namaProduk != null) {
+      map['nama_produk'] = Variable<String>(namaProduk);
+    }
     map['jumlah'] = Variable<int>(jumlah);
     map['harga_satuan'] = Variable<double>(hargaSatuan);
     map['subtotal'] = Variable<double>(subtotal);
@@ -3470,6 +3497,9 @@ class ItemTransaksiTableData extends DataClass
       id: Value(id),
       transaksiId: Value(transaksiId),
       produkId: Value(produkId),
+      namaProduk: namaProduk == null && nullToAbsent
+          ? const Value.absent()
+          : Value(namaProduk),
       jumlah: Value(jumlah),
       hargaSatuan: Value(hargaSatuan),
       subtotal: Value(subtotal),
@@ -3485,6 +3515,7 @@ class ItemTransaksiTableData extends DataClass
       id: serializer.fromJson<String>(json['id']),
       transaksiId: serializer.fromJson<String>(json['transaksiId']),
       produkId: serializer.fromJson<String>(json['produkId']),
+      namaProduk: serializer.fromJson<String?>(json['namaProduk']),
       jumlah: serializer.fromJson<int>(json['jumlah']),
       hargaSatuan: serializer.fromJson<double>(json['hargaSatuan']),
       subtotal: serializer.fromJson<double>(json['subtotal']),
@@ -3497,6 +3528,7 @@ class ItemTransaksiTableData extends DataClass
       'id': serializer.toJson<String>(id),
       'transaksiId': serializer.toJson<String>(transaksiId),
       'produkId': serializer.toJson<String>(produkId),
+      'namaProduk': serializer.toJson<String?>(namaProduk),
       'jumlah': serializer.toJson<int>(jumlah),
       'hargaSatuan': serializer.toJson<double>(hargaSatuan),
       'subtotal': serializer.toJson<double>(subtotal),
@@ -3507,6 +3539,7 @@ class ItemTransaksiTableData extends DataClass
     String? id,
     String? transaksiId,
     String? produkId,
+    Value<String?> namaProduk = const Value.absent(),
     int? jumlah,
     double? hargaSatuan,
     double? subtotal,
@@ -3514,6 +3547,7 @@ class ItemTransaksiTableData extends DataClass
     id: id ?? this.id,
     transaksiId: transaksiId ?? this.transaksiId,
     produkId: produkId ?? this.produkId,
+    namaProduk: namaProduk.present ? namaProduk.value : this.namaProduk,
     jumlah: jumlah ?? this.jumlah,
     hargaSatuan: hargaSatuan ?? this.hargaSatuan,
     subtotal: subtotal ?? this.subtotal,
@@ -3525,6 +3559,9 @@ class ItemTransaksiTableData extends DataClass
           ? data.transaksiId.value
           : this.transaksiId,
       produkId: data.produkId.present ? data.produkId.value : this.produkId,
+      namaProduk: data.namaProduk.present
+          ? data.namaProduk.value
+          : this.namaProduk,
       jumlah: data.jumlah.present ? data.jumlah.value : this.jumlah,
       hargaSatuan: data.hargaSatuan.present
           ? data.hargaSatuan.value
@@ -3539,6 +3576,7 @@ class ItemTransaksiTableData extends DataClass
           ..write('id: $id, ')
           ..write('transaksiId: $transaksiId, ')
           ..write('produkId: $produkId, ')
+          ..write('namaProduk: $namaProduk, ')
           ..write('jumlah: $jumlah, ')
           ..write('hargaSatuan: $hargaSatuan, ')
           ..write('subtotal: $subtotal')
@@ -3547,8 +3585,15 @@ class ItemTransaksiTableData extends DataClass
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, transaksiId, produkId, jumlah, hargaSatuan, subtotal);
+  int get hashCode => Object.hash(
+    id,
+    transaksiId,
+    produkId,
+    namaProduk,
+    jumlah,
+    hargaSatuan,
+    subtotal,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -3556,6 +3601,7 @@ class ItemTransaksiTableData extends DataClass
           other.id == this.id &&
           other.transaksiId == this.transaksiId &&
           other.produkId == this.produkId &&
+          other.namaProduk == this.namaProduk &&
           other.jumlah == this.jumlah &&
           other.hargaSatuan == this.hargaSatuan &&
           other.subtotal == this.subtotal);
@@ -3566,6 +3612,7 @@ class ItemTransaksiTableCompanion
   final Value<String> id;
   final Value<String> transaksiId;
   final Value<String> produkId;
+  final Value<String?> namaProduk;
   final Value<int> jumlah;
   final Value<double> hargaSatuan;
   final Value<double> subtotal;
@@ -3574,6 +3621,7 @@ class ItemTransaksiTableCompanion
     this.id = const Value.absent(),
     this.transaksiId = const Value.absent(),
     this.produkId = const Value.absent(),
+    this.namaProduk = const Value.absent(),
     this.jumlah = const Value.absent(),
     this.hargaSatuan = const Value.absent(),
     this.subtotal = const Value.absent(),
@@ -3583,6 +3631,7 @@ class ItemTransaksiTableCompanion
     required String id,
     required String transaksiId,
     required String produkId,
+    this.namaProduk = const Value.absent(),
     this.jumlah = const Value.absent(),
     this.hargaSatuan = const Value.absent(),
     this.subtotal = const Value.absent(),
@@ -3594,6 +3643,7 @@ class ItemTransaksiTableCompanion
     Expression<String>? id,
     Expression<String>? transaksiId,
     Expression<String>? produkId,
+    Expression<String>? namaProduk,
     Expression<int>? jumlah,
     Expression<double>? hargaSatuan,
     Expression<double>? subtotal,
@@ -3603,6 +3653,7 @@ class ItemTransaksiTableCompanion
       if (id != null) 'id': id,
       if (transaksiId != null) 'transaksi_id': transaksiId,
       if (produkId != null) 'produk_id': produkId,
+      if (namaProduk != null) 'nama_produk': namaProduk,
       if (jumlah != null) 'jumlah': jumlah,
       if (hargaSatuan != null) 'harga_satuan': hargaSatuan,
       if (subtotal != null) 'subtotal': subtotal,
@@ -3614,6 +3665,7 @@ class ItemTransaksiTableCompanion
     Value<String>? id,
     Value<String>? transaksiId,
     Value<String>? produkId,
+    Value<String?>? namaProduk,
     Value<int>? jumlah,
     Value<double>? hargaSatuan,
     Value<double>? subtotal,
@@ -3623,6 +3675,7 @@ class ItemTransaksiTableCompanion
       id: id ?? this.id,
       transaksiId: transaksiId ?? this.transaksiId,
       produkId: produkId ?? this.produkId,
+      namaProduk: namaProduk ?? this.namaProduk,
       jumlah: jumlah ?? this.jumlah,
       hargaSatuan: hargaSatuan ?? this.hargaSatuan,
       subtotal: subtotal ?? this.subtotal,
@@ -3641,6 +3694,9 @@ class ItemTransaksiTableCompanion
     }
     if (produkId.present) {
       map['produk_id'] = Variable<String>(produkId.value);
+    }
+    if (namaProduk.present) {
+      map['nama_produk'] = Variable<String>(namaProduk.value);
     }
     if (jumlah.present) {
       map['jumlah'] = Variable<int>(jumlah.value);
@@ -3663,6 +3719,7 @@ class ItemTransaksiTableCompanion
           ..write('id: $id, ')
           ..write('transaksiId: $transaksiId, ')
           ..write('produkId: $produkId, ')
+          ..write('namaProduk: $namaProduk, ')
           ..write('jumlah: $jumlah, ')
           ..write('hargaSatuan: $hargaSatuan, ')
           ..write('subtotal: $subtotal, ')
@@ -5061,6 +5118,17 @@ class $ItemPembelianTableTable extends ItemPembelianTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _namaProdukMeta = const VerificationMeta(
+    'namaProduk',
+  );
+  @override
+  late final GeneratedColumn<String> namaProduk = GeneratedColumn<String>(
+    'nama_produk',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _jumlahMeta = const VerificationMeta('jumlah');
   @override
   late final GeneratedColumn<int> jumlah = GeneratedColumn<int>(
@@ -5123,6 +5191,7 @@ class $ItemPembelianTableTable extends ItemPembelianTable
     id,
     pembelianId,
     produkId,
+    namaProduk,
     jumlah,
     hargaBeliSatuan,
     subtotal,
@@ -5164,6 +5233,12 @@ class $ItemPembelianTableTable extends ItemPembelianTable
       );
     } else if (isInserting) {
       context.missing(_produkIdMeta);
+    }
+    if (data.containsKey('nama_produk')) {
+      context.handle(
+        _namaProdukMeta,
+        namaProduk.isAcceptableOrUnknown(data['nama_produk']!, _namaProdukMeta),
+      );
     }
     if (data.containsKey('jumlah')) {
       context.handle(
@@ -5219,6 +5294,10 @@ class $ItemPembelianTableTable extends ItemPembelianTable
         DriftSqlType.string,
         data['${effectivePrefix}produk_id'],
       )!,
+      namaProduk: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}nama_produk'],
+      ),
       jumlah: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}jumlah'],
@@ -5253,6 +5332,7 @@ class ItemPembelianTableData extends DataClass
   final String id;
   final String pembelianId;
   final String produkId;
+  final String? namaProduk;
   final int jumlah;
   final double hargaBeliSatuan;
   final double subtotal;
@@ -5262,6 +5342,7 @@ class ItemPembelianTableData extends DataClass
     required this.id,
     required this.pembelianId,
     required this.produkId,
+    this.namaProduk,
     required this.jumlah,
     required this.hargaBeliSatuan,
     required this.subtotal,
@@ -5274,6 +5355,9 @@ class ItemPembelianTableData extends DataClass
     map['id'] = Variable<String>(id);
     map['pembelian_id'] = Variable<String>(pembelianId);
     map['produk_id'] = Variable<String>(produkId);
+    if (!nullToAbsent || namaProduk != null) {
+      map['nama_produk'] = Variable<String>(namaProduk);
+    }
     map['jumlah'] = Variable<int>(jumlah);
     map['harga_beli_satuan'] = Variable<double>(hargaBeliSatuan);
     map['subtotal'] = Variable<double>(subtotal);
@@ -5289,6 +5373,9 @@ class ItemPembelianTableData extends DataClass
       id: Value(id),
       pembelianId: Value(pembelianId),
       produkId: Value(produkId),
+      namaProduk: namaProduk == null && nullToAbsent
+          ? const Value.absent()
+          : Value(namaProduk),
       jumlah: Value(jumlah),
       hargaBeliSatuan: Value(hargaBeliSatuan),
       subtotal: Value(subtotal),
@@ -5308,6 +5395,7 @@ class ItemPembelianTableData extends DataClass
       id: serializer.fromJson<String>(json['id']),
       pembelianId: serializer.fromJson<String>(json['pembelianId']),
       produkId: serializer.fromJson<String>(json['produkId']),
+      namaProduk: serializer.fromJson<String?>(json['namaProduk']),
       jumlah: serializer.fromJson<int>(json['jumlah']),
       hargaBeliSatuan: serializer.fromJson<double>(json['hargaBeliSatuan']),
       subtotal: serializer.fromJson<double>(json['subtotal']),
@@ -5322,6 +5410,7 @@ class ItemPembelianTableData extends DataClass
       'id': serializer.toJson<String>(id),
       'pembelianId': serializer.toJson<String>(pembelianId),
       'produkId': serializer.toJson<String>(produkId),
+      'namaProduk': serializer.toJson<String?>(namaProduk),
       'jumlah': serializer.toJson<int>(jumlah),
       'hargaBeliSatuan': serializer.toJson<double>(hargaBeliSatuan),
       'subtotal': serializer.toJson<double>(subtotal),
@@ -5334,6 +5423,7 @@ class ItemPembelianTableData extends DataClass
     String? id,
     String? pembelianId,
     String? produkId,
+    Value<String?> namaProduk = const Value.absent(),
     int? jumlah,
     double? hargaBeliSatuan,
     double? subtotal,
@@ -5343,6 +5433,7 @@ class ItemPembelianTableData extends DataClass
     id: id ?? this.id,
     pembelianId: pembelianId ?? this.pembelianId,
     produkId: produkId ?? this.produkId,
+    namaProduk: namaProduk.present ? namaProduk.value : this.namaProduk,
     jumlah: jumlah ?? this.jumlah,
     hargaBeliSatuan: hargaBeliSatuan ?? this.hargaBeliSatuan,
     subtotal: subtotal ?? this.subtotal,
@@ -5356,6 +5447,9 @@ class ItemPembelianTableData extends DataClass
           ? data.pembelianId.value
           : this.pembelianId,
       produkId: data.produkId.present ? data.produkId.value : this.produkId,
+      namaProduk: data.namaProduk.present
+          ? data.namaProduk.value
+          : this.namaProduk,
       jumlah: data.jumlah.present ? data.jumlah.value : this.jumlah,
       hargaBeliSatuan: data.hargaBeliSatuan.present
           ? data.hargaBeliSatuan.value
@@ -5372,6 +5466,7 @@ class ItemPembelianTableData extends DataClass
           ..write('id: $id, ')
           ..write('pembelianId: $pembelianId, ')
           ..write('produkId: $produkId, ')
+          ..write('namaProduk: $namaProduk, ')
           ..write('jumlah: $jumlah, ')
           ..write('hargaBeliSatuan: $hargaBeliSatuan, ')
           ..write('subtotal: $subtotal, ')
@@ -5386,6 +5481,7 @@ class ItemPembelianTableData extends DataClass
     id,
     pembelianId,
     produkId,
+    namaProduk,
     jumlah,
     hargaBeliSatuan,
     subtotal,
@@ -5399,6 +5495,7 @@ class ItemPembelianTableData extends DataClass
           other.id == this.id &&
           other.pembelianId == this.pembelianId &&
           other.produkId == this.produkId &&
+          other.namaProduk == this.namaProduk &&
           other.jumlah == this.jumlah &&
           other.hargaBeliSatuan == this.hargaBeliSatuan &&
           other.subtotal == this.subtotal &&
@@ -5411,6 +5508,7 @@ class ItemPembelianTableCompanion
   final Value<String> id;
   final Value<String> pembelianId;
   final Value<String> produkId;
+  final Value<String?> namaProduk;
   final Value<int> jumlah;
   final Value<double> hargaBeliSatuan;
   final Value<double> subtotal;
@@ -5421,6 +5519,7 @@ class ItemPembelianTableCompanion
     this.id = const Value.absent(),
     this.pembelianId = const Value.absent(),
     this.produkId = const Value.absent(),
+    this.namaProduk = const Value.absent(),
     this.jumlah = const Value.absent(),
     this.hargaBeliSatuan = const Value.absent(),
     this.subtotal = const Value.absent(),
@@ -5432,6 +5531,7 @@ class ItemPembelianTableCompanion
     required String id,
     required String pembelianId,
     required String produkId,
+    this.namaProduk = const Value.absent(),
     this.jumlah = const Value.absent(),
     this.hargaBeliSatuan = const Value.absent(),
     this.subtotal = const Value.absent(),
@@ -5445,6 +5545,7 @@ class ItemPembelianTableCompanion
     Expression<String>? id,
     Expression<String>? pembelianId,
     Expression<String>? produkId,
+    Expression<String>? namaProduk,
     Expression<int>? jumlah,
     Expression<double>? hargaBeliSatuan,
     Expression<double>? subtotal,
@@ -5456,6 +5557,7 @@ class ItemPembelianTableCompanion
       if (id != null) 'id': id,
       if (pembelianId != null) 'pembelian_id': pembelianId,
       if (produkId != null) 'produk_id': produkId,
+      if (namaProduk != null) 'nama_produk': namaProduk,
       if (jumlah != null) 'jumlah': jumlah,
       if (hargaBeliSatuan != null) 'harga_beli_satuan': hargaBeliSatuan,
       if (subtotal != null) 'subtotal': subtotal,
@@ -5469,6 +5571,7 @@ class ItemPembelianTableCompanion
     Value<String>? id,
     Value<String>? pembelianId,
     Value<String>? produkId,
+    Value<String?>? namaProduk,
     Value<int>? jumlah,
     Value<double>? hargaBeliSatuan,
     Value<double>? subtotal,
@@ -5480,6 +5583,7 @@ class ItemPembelianTableCompanion
       id: id ?? this.id,
       pembelianId: pembelianId ?? this.pembelianId,
       produkId: produkId ?? this.produkId,
+      namaProduk: namaProduk ?? this.namaProduk,
       jumlah: jumlah ?? this.jumlah,
       hargaBeliSatuan: hargaBeliSatuan ?? this.hargaBeliSatuan,
       subtotal: subtotal ?? this.subtotal,
@@ -5500,6 +5604,9 @@ class ItemPembelianTableCompanion
     }
     if (produkId.present) {
       map['produk_id'] = Variable<String>(produkId.value);
+    }
+    if (namaProduk.present) {
+      map['nama_produk'] = Variable<String>(namaProduk.value);
     }
     if (jumlah.present) {
       map['jumlah'] = Variable<int>(jumlah.value);
@@ -5528,6 +5635,7 @@ class ItemPembelianTableCompanion
           ..write('id: $id, ')
           ..write('pembelianId: $pembelianId, ')
           ..write('produkId: $produkId, ')
+          ..write('namaProduk: $namaProduk, ')
           ..write('jumlah: $jumlah, ')
           ..write('hargaBeliSatuan: $hargaBeliSatuan, ')
           ..write('subtotal: $subtotal, ')
@@ -14167,6 +14275,7 @@ typedef $$ItemTransaksiTableTableCreateCompanionBuilder =
       required String id,
       required String transaksiId,
       required String produkId,
+      Value<String?> namaProduk,
       Value<int> jumlah,
       Value<double> hargaSatuan,
       Value<double> subtotal,
@@ -14177,6 +14286,7 @@ typedef $$ItemTransaksiTableTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> transaksiId,
       Value<String> produkId,
+      Value<String?> namaProduk,
       Value<int> jumlah,
       Value<double> hargaSatuan,
       Value<double> subtotal,
@@ -14204,6 +14314,11 @@ class $$ItemTransaksiTableTableFilterComposer
 
   ColumnFilters<String> get produkId => $composableBuilder(
     column: $table.produkId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get namaProduk => $composableBuilder(
+    column: $table.namaProduk,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14247,6 +14362,11 @@ class $$ItemTransaksiTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get namaProduk => $composableBuilder(
+    column: $table.namaProduk,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get jumlah => $composableBuilder(
     column: $table.jumlah,
     builder: (column) => ColumnOrderings(column),
@@ -14282,6 +14402,11 @@ class $$ItemTransaksiTableTableAnnotationComposer
 
   GeneratedColumn<String> get produkId =>
       $composableBuilder(column: $table.produkId, builder: (column) => column);
+
+  GeneratedColumn<String> get namaProduk => $composableBuilder(
+    column: $table.namaProduk,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get jumlah =>
       $composableBuilder(column: $table.jumlah, builder: (column) => column);
@@ -14338,6 +14463,7 @@ class $$ItemTransaksiTableTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> transaksiId = const Value.absent(),
                 Value<String> produkId = const Value.absent(),
+                Value<String?> namaProduk = const Value.absent(),
                 Value<int> jumlah = const Value.absent(),
                 Value<double> hargaSatuan = const Value.absent(),
                 Value<double> subtotal = const Value.absent(),
@@ -14346,6 +14472,7 @@ class $$ItemTransaksiTableTableTableManager
                 id: id,
                 transaksiId: transaksiId,
                 produkId: produkId,
+                namaProduk: namaProduk,
                 jumlah: jumlah,
                 hargaSatuan: hargaSatuan,
                 subtotal: subtotal,
@@ -14356,6 +14483,7 @@ class $$ItemTransaksiTableTableTableManager
                 required String id,
                 required String transaksiId,
                 required String produkId,
+                Value<String?> namaProduk = const Value.absent(),
                 Value<int> jumlah = const Value.absent(),
                 Value<double> hargaSatuan = const Value.absent(),
                 Value<double> subtotal = const Value.absent(),
@@ -14364,6 +14492,7 @@ class $$ItemTransaksiTableTableTableManager
                 id: id,
                 transaksiId: transaksiId,
                 produkId: produkId,
+                namaProduk: namaProduk,
                 jumlah: jumlah,
                 hargaSatuan: hargaSatuan,
                 subtotal: subtotal,
@@ -15141,6 +15270,7 @@ typedef $$ItemPembelianTableTableCreateCompanionBuilder =
       required String id,
       required String pembelianId,
       required String produkId,
+      Value<String?> namaProduk,
       Value<int> jumlah,
       Value<double> hargaBeliSatuan,
       Value<double> subtotal,
@@ -15153,6 +15283,7 @@ typedef $$ItemPembelianTableTableUpdateCompanionBuilder =
       Value<String> id,
       Value<String> pembelianId,
       Value<String> produkId,
+      Value<String?> namaProduk,
       Value<int> jumlah,
       Value<double> hargaBeliSatuan,
       Value<double> subtotal,
@@ -15182,6 +15313,11 @@ class $$ItemPembelianTableTableFilterComposer
 
   ColumnFilters<String> get produkId => $composableBuilder(
     column: $table.produkId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get namaProduk => $composableBuilder(
+    column: $table.namaProduk,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -15235,6 +15371,11 @@ class $$ItemPembelianTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get namaProduk => $composableBuilder(
+    column: $table.namaProduk,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get jumlah => $composableBuilder(
     column: $table.jumlah,
     builder: (column) => ColumnOrderings(column),
@@ -15280,6 +15421,11 @@ class $$ItemPembelianTableTableAnnotationComposer
 
   GeneratedColumn<String> get produkId =>
       $composableBuilder(column: $table.produkId, builder: (column) => column);
+
+  GeneratedColumn<String> get namaProduk => $composableBuilder(
+    column: $table.namaProduk,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get jumlah =>
       $composableBuilder(column: $table.jumlah, builder: (column) => column);
@@ -15342,6 +15488,7 @@ class $$ItemPembelianTableTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> pembelianId = const Value.absent(),
                 Value<String> produkId = const Value.absent(),
+                Value<String?> namaProduk = const Value.absent(),
                 Value<int> jumlah = const Value.absent(),
                 Value<double> hargaBeliSatuan = const Value.absent(),
                 Value<double> subtotal = const Value.absent(),
@@ -15352,6 +15499,7 @@ class $$ItemPembelianTableTableTableManager
                 id: id,
                 pembelianId: pembelianId,
                 produkId: produkId,
+                namaProduk: namaProduk,
                 jumlah: jumlah,
                 hargaBeliSatuan: hargaBeliSatuan,
                 subtotal: subtotal,
@@ -15364,6 +15512,7 @@ class $$ItemPembelianTableTableTableManager
                 required String id,
                 required String pembelianId,
                 required String produkId,
+                Value<String?> namaProduk = const Value.absent(),
                 Value<int> jumlah = const Value.absent(),
                 Value<double> hargaBeliSatuan = const Value.absent(),
                 Value<double> subtotal = const Value.absent(),
@@ -15374,6 +15523,7 @@ class $$ItemPembelianTableTableTableManager
                 id: id,
                 pembelianId: pembelianId,
                 produkId: produkId,
+                namaProduk: namaProduk,
                 jumlah: jumlah,
                 hargaBeliSatuan: hargaBeliSatuan,
                 subtotal: subtotal,

@@ -92,8 +92,9 @@ class TransaksiRepositoryImpl implements TransaksiRepository {
     await _db.into(_db.itemTransaksiTable).insert(
           ItemTransaksiTableCompanion.insert(
             id: id,
-                  transaksiId: item.transaksiId,
+            transaksiId: item.transaksiId,
             produkId: item.produkId,
+            namaProduk: Value(item.namaProduk),
             jumlah: Value(item.jumlah),
             hargaSatuan: Value(item.hargaSatuan),
             subtotal: Value(item.subtotal),
@@ -105,6 +106,7 @@ class TransaksiRepositoryImpl implements TransaksiRepository {
       'id': id,
       'transaksi_id': item.transaksiId,
       'produk_id': item.produkId,
+      'nama_produk': item.namaProduk,
       'jumlah': item.jumlah,
       'harga_satuan': item.hargaSatuan,
       'subtotal': item.subtotal,
@@ -130,7 +132,7 @@ class TransaksiRepositoryImpl implements TransaksiRepository {
         id: item.id,
           transaksiId: item.transaksiId,
         produkId: item.produkId,
-        namaProduk: produk?.nama,
+        namaProduk: item.namaProduk ?? produk?.nama,
         jumlah: item.jumlah,
         hargaSatuan: item.hargaSatuan,
         subtotal: item.subtotal,

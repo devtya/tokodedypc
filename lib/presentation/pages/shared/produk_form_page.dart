@@ -63,6 +63,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
   bool get _isEditing => _currentProduk != null;
 
   Produk? _currentProduk;
+  Produk? _lastSavedProduk;
 
   // ── Product Info controllers ──
   late TextEditingController _namaCtrl;
@@ -103,6 +104,12 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
     );
     _kategoriCtrl = TextEditingController(text: p?.kategori ?? '');
     _satuanDasarCtrl = TextEditingController(text: p?.satuan ?? 'pcs');
+
+    _namaCtrl.addListener(_onInputChanged);
+    _barcodeCtrl.addListener(_onInputChanged);
+    _stokCtrl.addListener(_onInputChanged);
+    _stokMinimumCtrl.addListener(_onInputChanged);
+    _kategoriCtrl.addListener(_onInputChanged);
 
     // Auto-sync Base Unit name with Satuan Dasar input when adding new product
     _satuanDasarCtrl.addListener(_onSatuanDasarChanged);
@@ -186,6 +193,50 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
     _kategoriCtrl.dispose();
     _satuanDasarCtrl.dispose();
     super.dispose();
+  }
+
+  void _onInputChanged() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _hasChanges {
+    if (_currentProduk == null) {
+      if (_namaCtrl.text.trim().isNotEmpty) return true;
+      if (_barcodeCtrl.text.trim().isNotEmpty) return true;
+      if (_stokCtrl.text.trim().isNotEmpty && _stokCtrl.text.trim() != '0') return true;
+      if (_stokMinimumCtrl.text.trim().isNotEmpty) return true;
+      if (_kategoriCtrl.text.trim().isNotEmpty) return true;
+      if (_imageUrl != null) return true;
+      if (_units.length > 1) return true;
+      if (_units.isNotEmpty) {
+        final u = _units.first;
+        if (u.nama != 'pcs' && u.nama != '') return true;
+        if (u.hargaBeli != 0) return true;
+        if (u.hargaJual != 0) return true;
+      }
+      return false;
+    } else {
+      final p = _currentProduk!;
+      if (_namaCtrl.text.trim().toUpperCase() != p.nama.toUpperCase()) return true;
+      if (_barcodeCtrl.text.trim() != (p.barcode ?? '')) return true;
+      if (_stokCtrl.text.trim() != p.stok.toString()) return true;
+      if (_stokMinimumCtrl.text.trim() != (p.stokMinimum?.toString() ?? '')) return true;
+      if (_kategoriCtrl.text.trim().toUpperCase() != (p.kategori?.toUpperCase() ?? '')) return true;
+      if (_imageUrl != p.imageUrl) return true;
+      
+      final dbUnits = p.satuanList ?? [];
+      if (_units.length != dbUnits.length) return true;
+      for (int i = 0; i < _units.length; i++) {
+        final u = _units[i];
+        final dbu = dbUnits.firstWhere((e) => e.id == u.dbId, orElse: () => SatuanProduk(id: 'dummy', produkId: '', nama: 'dummy', konversi: 0, hargaBeli: 0, hargaJual: 0));
+        if (dbu.id == 'dummy') return true;
+        if (u.nama != dbu.nama) return true;
+        if (u.konversi != dbu.konversi) return true;
+        if (u.hargaBeli != dbu.hargaBeli) return true;
+        if (u.hargaJual != dbu.hargaJual) return true;
+      }
+      return false;
+    }
   }
 
   // ── Computed ──
@@ -425,6 +476,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
         });
       }
     }
+    _onInputChanged();
   }
 
   void _updateBaseSatuan() {
@@ -570,7 +622,11 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
       satuanList: satuanList,
     );
 
-    setState(() => _isSaving = true);
+    setState(() {
+      _isSaving = true;
+      _lastSavedProduk = produk;
+    });
+    
     if (_isEditing) {
       context.read<ProdukBloc>().add(UpdateProdukEvent(produk));
     } else {
@@ -601,7 +657,15 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
                 });
 
                 if (_isEditing) {
+                  setState(() {
+                    if (_lastSavedProduk != null) {
+                      _currentProduk = _lastSavedProduk;
+                    }
+                  });
                   FocusScope.of(context).unfocus();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Perubahan berhasil disimpan')),
+                  );
                   return;
                 }
 
@@ -1134,7 +1198,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
             Expanded(
               flex: 2,
               child: ElevatedButton(
-                onPressed: _isSaving ? null : _submit,
+                onPressed: _isSaving || !_hasChanges ? null : _submit,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.primary,
                   padding: const EdgeInsets.symmetric(vertical: 14),

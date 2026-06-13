@@ -197,18 +197,27 @@ class _ProdukPageState extends State<ProdukPage> {
             title: const Text('Daftar Produk'),
             actions: [
               const SyncIndicator(),
+              const SizedBox(width: 8),
               if (isAdmin) ...[
-                IconButton(
-                  icon: const Icon(Icons.inventory_2_outlined),
-                  tooltip: 'Stok Minimum Global',
+                OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                  ),
+                  icon: const Icon(Icons.inventory_2_outlined, size: 18),
+                  label: const Text('Stok Minimum'),
                   onPressed: () => _openGlobalStockSettings(),
                 ),
+                const SizedBox(width: 12),
                 if (_selectedIds.isEmpty)
-                  IconButton(
-                    icon: const Icon(Icons.add),
-                    tooltip: 'Tambah Produk',
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    ),
+                    icon: const Icon(Icons.add, size: 18),
+                    label: const Text('Tambah Produk'),
                     onPressed: () => _openForm(),
                   ),
+                const SizedBox(width: 16),
               ],
             ],
           ),
@@ -277,7 +286,7 @@ class _ProdukPageState extends State<ProdukPage> {
 
   Widget _buildSearchBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(

@@ -1,0 +1,80 @@
+﻿Resolving dependencies...
+Downloading packages...
+  _fe_analyzer_shared 93.0.0 (102.0.0 available)
+  analyzer 10.0.1 (13.2.0 available)
+  app_links 7.0.0 (7.1.1 available)
+  archive 3.6.1 (4.0.9 available)
+  cli_util 0.4.2 (0.5.1 available)
+  code_assets 1.0.0 (1.2.1 available)
+  connectivity_plus 6.1.5 (7.1.1 available)
+  dart_style 3.1.7 (3.1.9 available)
+  dbus 0.7.12 (0.7.14 available)
+  device_info_plus 11.5.0 (13.1.0 available)
+  device_info_plus_platform_interface 7.0.3 (8.1.0 available)
+  drift 2.33.0 (2.34.0 available)
+  drift_dev 2.33.0 (2.34.0 available)
+  file_picker 8.3.7 (11.0.2 available)
+  flutter_blue_plus 1.36.8 (2.3.8 available)
+  flutter_blue_plus_android 7.0.4 (9.0.2 available)
+  flutter_blue_plus_darwin 7.0.3 (9.0.2 available)
+  flutter_blue_plus_linux 7.0.3 (9.0.2 available)
+  flutter_blue_plus_platform_interface 7.0.0 (9.0.2 available)
+  flutter_blue_plus_web 7.0.2 (9.0.2 available)
+  flutter_plugin_android_lifecycle 2.0.34 (2.0.35 available)
+  functions_client 2.5.0 (2.6.0 available)
+  get_it 8.3.0 (9.2.1 available)
+  gotrue 2.20.0 (2.21.0 available)
+  hooks 1.0.3 (2.0.2 available)
+  image 4.3.0 (4.9.1 available)
+  image_picker_android 0.8.13+17 (0.8.13+19 available)
+  json_annotation 4.11.0 (4.12.0 available)
+  local_auth 2.3.0 (3.0.1 available)
+  local_auth_android 1.0.56 (2.0.9 available)
+  local_auth_darwin 1.6.1 (2.0.3 available)
+  local_auth_windows 1.0.11 (2.0.1 available)
+  matcher 0.12.19 (0.12.20 available)
+  meta 1.17.0 (1.18.3 available)
+  mobile_scanner 6.0.11 (7.2.0 available)
+  native_toolchain_c 0.17.6 (0.19.1 available)
+  objective_c 9.3.0 (9.4.1 available)
+  package_config 2.2.0 (3.0.0 available)
+  package_info_plus 8.3.1 (10.1.0 available)
+  package_info_plus_platform_interface 3.2.1 (4.1.0 available)
+  permission_handler 11.4.0 (12.0.3 available)
+  permission_handler_android 12.1.0 (13.0.1 available)
+  permission_handler_apple 9.4.7 (9.4.9 available)
+  postgrest 2.7.0 (2.7.1 available)
+  qr 3.0.2 (4.0.0 available)
+  realtime_client 2.7.3 (2.7.4 available)
+  share_plus 10.1.4 (13.1.0 available)
+  share_plus_platform_interface 5.0.2 (7.1.0 available)
+  shared_preferences_android 2.4.23 (2.4.26 available)
+  slang 4.15.0 (4.16.0 available)
+  slang_flutter 4.15.0 (4.16.0 available)
+  sqlite3 3.3.1 (3.3.2 available)
+  sqlite3_flutter_libs 0.5.42 (0.6.0+eol available)
+  sqlparser 0.44.4 (0.44.5 available)
+  storage_client 2.5.2 (2.5.6 available)
+  supabase 2.10.6 (2.12.2 available)
+  supabase_flutter 2.12.4 (2.14.2 available)
+  test_api 0.7.10 (0.7.12 available)
+  url_launcher_android 6.3.29 (6.3.32 available)
+  vector_math 2.2.0 (2.4.0 available)
+  win32 5.15.0 (6.3.0 available)
+  win32_registry 2.1.0 (3.0.3 available)
+  xml 6.6.1 (7.0.1 available)
+Got dependencies!
+63 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+Analyzing home_page.dart...                                     
+
+   info - Unnecessary use of multiple underscores - lib\presentation\pages\shared\home_page.dart:874:59 - unnecessary_underscores
+   info - Unnecessary use of multiple underscores - lib\presentation\pages\shared\home_page.dart:927:59 - unnecessary_underscores
+
+flutter : 2 issues found. (ran in 8.9s)
+At line:1 char:1
++ flutter analyze lib/presentation/pages/shared/home_page.dart 2>&1 | O ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (2 issues found. (ran in 8.9s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
