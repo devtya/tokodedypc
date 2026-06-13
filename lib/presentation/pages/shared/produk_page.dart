@@ -89,33 +89,36 @@ class _ProdukPageState extends State<ProdukPage> {
 
   void _applyFilters() {
     final q = _searchController.text.toLowerCase();
-    _filteredProducts = _allProducts.where((p) {
-      final matchQuery = q.isEmpty ||
-          p.nama.toLowerCase().contains(q) ||
-          (p.barcode?.toLowerCase().contains(q) ?? false);
+    
+    setState(() {
+      _filteredProducts = _allProducts.where((p) {
+        final matchQuery = q.isEmpty ||
+            p.nama.toLowerCase().contains(q) ||
+            (p.barcode?.toLowerCase().contains(q) ?? false);
 
-      final matchKategori = _selectedKategori == null ||
-          _selectedKategori == 'Semua' ||
-          p.kategori == _selectedKategori;
+        final matchKategori = _selectedKategori == null ||
+            _selectedKategori == 'Semua' ||
+            p.kategori == _selectedKategori;
 
-      final stokMin = p.stokMinimum ?? 0;
-      bool matchStock;
-      switch (_stockFilter) {
-        case _StockFilter.all:
-          matchStock = !p.isArchived;
-        case _StockFilter.lowStock:
-          matchStock = !p.isArchived && p.stok > 0 && p.stok <= stokMin;
-        case _StockFilter.outOfStock:
-          matchStock = !p.isArchived && p.stok == 0;
-        case _StockFilter.archived:
-          matchStock = p.isArchived;
-      }
+        final stokMin = p.stokMinimum ?? 0;
+        bool matchStock;
+        switch (_stockFilter) {
+          case _StockFilter.all:
+            matchStock = !p.isArchived;
+          case _StockFilter.lowStock:
+            matchStock = !p.isArchived && p.stok > 0 && p.stok <= stokMin;
+          case _StockFilter.outOfStock:
+            matchStock = !p.isArchived && p.stok == 0;
+          case _StockFilter.archived:
+            matchStock = p.isArchived;
+        }
 
-      return matchQuery && matchKategori && matchStock;
-    }).toList();
+        return matchQuery && matchKategori && matchStock;
+      }).toList();
 
-    _sortProducts();
-    _selectedIds.clear();
+      _sortProducts();
+      _selectedIds.clear();
+    });
   }
 
   void _sortProducts() {
