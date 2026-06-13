@@ -421,8 +421,7 @@ class _ProdukPageState extends State<ProdukPage> {
               numeric: true,
               onSort: _onSort,
             ),
-            if (!_showSidePanel)
-              const DataColumn(label: Text('Kategori', style: TextStyle(fontWeight: FontWeight.w600))),
+
             if (!_showSidePanel)
               const DataColumn(label: Text('Terakhir Update', style: TextStyle(fontWeight: FontWeight.w600))),
             const DataColumn(label: Text('Aksi', style: TextStyle(fontWeight: FontWeight.w600))),
@@ -491,11 +490,6 @@ class _ProdukPageState extends State<ProdukPage> {
                 ),
                 if (!_showSidePanel)
                   DataCell(
-                    Text(produk.kategori ?? '-', style: const TextStyle(fontSize: 13)),
-                    onTap: isAdmin ? () => _openForm(produk: produk) : null,
-                  ),
-                if (!_showSidePanel)
-                  DataCell(
                     Text(
                       produk.updatedAt != null 
                           ? DateFormat('dd MMM yyyy, HH:mm').format(produk.updatedAt!) 
@@ -544,8 +538,6 @@ class _ProdukPageState extends State<ProdukPage> {
               const DataColumn(label: Text('Harga Beli', style: TextStyle(fontWeight: FontWeight.w600)), numeric: true),
             const DataColumn(label: Text('Stok', style: TextStyle(fontWeight: FontWeight.w600)), numeric: true),
             if (!_showSidePanel)
-              const DataColumn(label: Text('Kategori', style: TextStyle(fontWeight: FontWeight.w600))),
-            if (!_showSidePanel)
               const DataColumn(label: Text('Terakhir Update', style: TextStyle(fontWeight: FontWeight.w600))),
             const DataColumn(label: Text('Aksi', style: TextStyle(fontWeight: FontWeight.w600))),
           ],
@@ -558,8 +550,6 @@ class _ProdukPageState extends State<ProdukPage> {
                 if (!_showSidePanel)
                   DataCell(Container(width: 80, height: 16, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)))),
                 DataCell(Container(width: 50, height: 16, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)))),
-                if (!_showSidePanel)
-                  DataCell(Container(width: 100, height: 16, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)))),
                 if (!_showSidePanel)
                   DataCell(Container(width: 120, height: 16, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)))),
                 DataCell(Container(width: 70, height: 16, decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4)))),
