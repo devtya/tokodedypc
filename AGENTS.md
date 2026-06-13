@@ -119,6 +119,127 @@ Gunakan notasi berikut untuk menyebut huruf versi yang ingin dinaikkan:
 
 Current: **1.7.3**
 
+# AGENTS.md — tokodedypc (Windows Desktop)
+
+## Stack
+
+- **Framework**: Flutter (Dart SDK ^3.11.5)
+- **Target Platform**: Windows Desktop (`flutter build windows`)
+- **Database**: drift ^2.25 + sqlite3_flutter_libs (SQLite ORM)
+- **DI**: get_it ^8.0
+- **Barcode**: Input manual (dialog teks) — kamera tidak tersedia di Windows
+- **Printing**: Network (HTTP) via print_server.py — Bluetooth tidak didukung di Windows
+- **Linting**: flutter_lints ^6.0
+- **Android folder**: Sudah dihapus, project murni Windows Desktop
+
+## Related Projects
+- **tokodedy** (`d:\PROJECT\TOKO DEDY\tokodedy`): Proyek Android asal (POS mobile). tokodedypc adalah fork/copy dari project ini untuk Windows.
+- **DedyStore** (`d:\PROJECT\TOKO DEDY\dedystore`): Proyek front-end toko online (Next.js) untuk pembeli yang terhubung dengan database Supabase.
+- Segala koordinasi, todo list bersama, dan protokol sinkronisasi antar agen terdapat pada file `dedysync.md` di root folder `d:\PROJECT\TOKO DEDY`.
+
+## Project structure (Clean Architecture)
+
+```
+lib/
+  core/          theme, constants, DI (get_it), errors
+  data/          database/ (Drift tables + AppDatabase), models/, repositories/
+  domain/        entities/, repositories/ (abstract interfaces), usecases/
+  presentation/  blocs/, pages/, widgets/
+```
+
+> **Pages**: All page files are under `lib/presentation/pages/`. Project ini adalah versi desktop Windows yang di-fork dari project Android `tokodedy`. Sebagian kode Android (AndroidManifest, MainActivity.kt) masih tersisa sebagai fondasi.
+
+## Key commands
+
+| Command | When |
+|---------|------|
+| `flutter analyze` | Lint + typecheck in one step. Run before committing. |
+| `dart run build_runner build` | After modifying any Drift table or adding @DriftDatabase decorator. Generates `*.g.dart`. |
+| `flutter run --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...` | Debug dengan Supabase sync aktif. |
+| `flutter build windows --debug --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...` | **Default** — build debug Windows exe dengan Supabase sync (no APK, langsung .exe). |
+| `flutter build windows --release --dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...` | Build release Windows exe (final). |
+| `flutter test` | Run all tests. |
+
+## Database (Drift)
+
+- **24 tables**: Defined in `lib/data/database/tables/`, aggregated in `lib/data/database/app_database.dart`
+- **Schema version 1** (DB di-reset dari awal saat rename project dari `hend_kasir` → `tokodedy`)
+- Connection via `LazyDatabase` → `NativeDatabase` (file: `tokodedy.db` in app docs dir)
+
+## Supabase Sync & Auth (Arsitektur V2)
+
+- **Auth menggunakan Supabase Auth (Hybrid)**: Kredensial login (email & password) ditangani dan divalidasi penuh oleh Supabase Auth (online). Password tidak disimpan di lokal. Profil pengguna tersimpan di tabel `profiles` Supabase dan akan di-cache secara lokal ke tabel `user` Drift bersamaan dengan *session token* (di `SharedPreferences`). Ini memungkinkan aplikasi tetap bisa dibuka tanpa internet (offline) asalkan sesi lokal masih ada (sistem *Cloud Recovery Login*).
+- **Offline-first (V2 Sync)**: Database lokal (Drift) tetap menjadi tumpuan utama operasional harian. Sinkronisasi menggunakan model *direct upsert* per-tabel ke Supabase (tidak ada lagi `SyncRecordTable` atau UUID mapping JSON blob dari V1).
+- **Mekanisme Sync**: Data baru/berubah akan di-push (upsert) ke Supabase. Jika *offline*, aksi akan diantrikan ke `pending_sync_queue_table`. Saat `pull()`, data dari device lain diunduh berdasarkan parameter `updated_at` atau `created_at`.
+- Konfigurasi Supabase via `--dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...`
+- File `supabase_setup.sql` / `supabase_setup_v2.sql` untuk setup tabel di project Supabase.
+- Defined in `lib/data/database/tables/`, aggregated in `lib/data/database/app_database.dart`
+- **Never override `primaryKey`** when using `autoIncrement()` — Drift handles it automatically
+
+## DI
+
+- Central `sl` (GetIt instance) in `lib/core/di/injection.dart`
+- `initDependencies()` called once at app startup in `main()` before `runApp`
+- Register repos/usecases as `sl.registerLazySingleton<T>(() => ...)`
+- Register BLoCs as `sl.registerFactory()` (new instance per page), repos/usecases as `sl.registerLazySingleton()`
+
+## Conventions
+
+- **Entities** extend `Equatable` with `copyWith()`
+- **Repository interfaces** in `domain/repositories/`, implementations in `data/repositories/`
+- **Theme**: System theme (`ThemeMode.system`) default, light & dark themes defined in `AppTheme` — `lib/core/theme/app_theme.dart`. Gunakan `ThemeCubit` untuk toggle (light/dark/system), persist ke `SharedPreferences`.
+- **ProdukFormPage**: Multi-satuan dengan auto-konversi harga pokok. Saat harga pokok satuan konversi diisi, harga pokok satuan dasar otomatis dihitung ulang (`hargaPokok / konversi`).
+- Drift generates data classes with same names as domain entities (e.g., `Produk`). Disambiguate in repo impl with import alias: `import '.../entities/produk.dart' as domain`
+- **BLoCs** use `Bloc<Event, State>`, events defined in `*_event.dart`, states in `*_state.dart`
+- Register BLoCs as `sl.registerFactory()` (new instance per page), repos/usecases as `sl.registerLazySingleton()`
+- **ThemeCubit** registered as `registerLazySingleton` di `injection.dart`
+- Git repo sudah aktif
+- No `opencode.json` or other agent config files exist
+
+## Agent Behavior Rules
+
+- **Ambiguitas**: Jika perintah user ambigu atau kurang jelas (contoh: "fix error ini"), WAJIB tanyakan detail errornya terjadi di mana (halaman/menu apa) dan seperti apa errornya agar analisa tidak menyebar ke mana-mana. Bisa juga kasih rekomendasi opsi yang memungkinkan.
+- **Commit**: WAJIB selalu tanya konfirmasi sebelum melakukan commit. Jangan pernah commit tanpa persetujuan eksplisit.
+- **Sebelum ubah kode**: WAJIB konfirmasi ke user dan jelaskan alasan/kenapa kode tersebut perlu diubah sebelum melakukan perubahan. Sertakan juga dampak dari perubahan tersebut.
+- **Todo List**: Sebelum mengerjakan perbaikan arsitektur atau tech debt, WAJIB mengupdate file `IMPROVEMENTS.md` dengan menandai bagian yang akan dikerjakan beserta ringkasan cara/metode yang akan digunakan.
+- **i18n & Localization**: WAJIB menghindari teks *hardcoded* pada UI (terutama di dalam `Text()`, `SnackBar`, dll). Semua teks bahasa yang digunakan di halaman antarmuka harus didaftarkan melalui file `lib/i18n/strings.i18n.json` dan digenerate menggunakan `dart run slang`.
+- **Desktop Navigation / Sidebar**: Semua menu/halaman tidak boleh melakukan `Navigator.push` ke rute global untuk membuka layar penuh (kecuali untuk dialog/popup). Sidebar utama (`HomePage` sidebar) WAJIB selalu terlihat dan bisa diakses. Jika sebuah menu memiliki sub-halaman (misalnya Pembelian ke PembelianForm), WAJIB menggunakan **Local Navigator** (`Navigator` mandiri dengan GlobalKey di dalam konten halaman tersebut) agar navigasinya terkurung di sebelah kanan sidebar.
+
+
+## Pembelian Pages Layout Rules (LOCKED — DO NOT CHANGE)
+
+### PembelianPage (`pembelian_page.dart`)
+- **NO FloatingActionButton** — all actions must be in AppBar
+- **AppBar actions** (right to left):
+  1. Pending button (`Icons.pending_actions`) with red badge notification showing count of pending items
+  2. Add button (`Icons.add`) to create new purchase
+- Pending count loaded via `_loadPendingCount()` using `PendingPembelianRepository.getAllPending()`
+- Badge shows count (or "9+" if > 9), hidden when count is 0
+
+### PembelianFormPage (`pembelian_form_page.dart`)
+- **AppBar actions**: Pending button (`Icons.pending_actions`) to view pending list
+- **Bottom panel** (`_buildBottomPanel`): Contains subtotal, discount, PPN toggle+input, total final, and submit button
+- **NO floating action buttons** — submit button is always at the bottom of the form
+
+## Printing System (Thermal Printer)
+
+- **Architecture**: HP → HTTP → PC Print Server (Python + FastAPI) → USB Thermal Printer (Bluetooth tidak didukung di Windows)
+- **PC Print Server**: `print_server.py` di root project. Run: `pip install fastapi uvicorn python-escpos pyusb && python print_server.py`
+- **Flutter Services**: `PrinterService` abstraction → `NetworkPrinterService` (HTTP) — `BluetoothPrinterService` adalah stub (tidak berfungsi di Windows)
+- **Settings**: `PrinterSettingsPage` accessible from Settings page. Configure URL, toko name, paper width (58mm/80mm), ukuran font (kecil/normal/besar)
+- **Auto-print**: After cashier transaction success, receipt auto-prints if printer is enabled in settings
+- **Dynamic DI**: `PrinterService` diregistrasi ulang via `updatePrinterService()` saat URL berubah. `ReceiptGenerator` baca `fontSize` dari `PrinterSettings`.
+- **ESC-POS**: Network service generates raw ESC-POS commands via HTTP JSON ke print_server.py; ukuran font dikontrol via ESC/POS print mode byte
+
+## Version Tracking
+
+Gunakan notasi berikut untuk menyebut huruf versi yang ingin dinaikkan:
+- **x** — Major (breaking changes, reset y & z ke 0)
+- **y** — Minor (fitur baru, reset z ke 0)
+- **z** — Patch (bug fix / perbaikan kecil)
+
+Current: **1.7.3**
+
 ## Log Konvensi
 
 > **Setiap bug fix dan penambahan fitur WAJIB dicatat di bagian log di bawah ini** (format konsisten) agar menjadi referensi untuk development selanjutnya. Format:
@@ -126,6 +247,12 @@ Current: **1.7.3**
 > - Fitur: `### Fitur: <nama>` dengan deskripsi, cara pakai, files, date
 
 ## Bug Fixes Log
+
+### Bug: Hapus Produk — Layar blank hitam
+- **Root cause**: `Navigator.pop(context)` dipanggil langsung di `_confirmDelete` dan `_buildBottomBar`, yang mana akan menghilangkan seluruh struktur navigasi jika produk sedang dirender sebagai `SidePanel` mandiri tanpa route Navigator baru (navigasi lokal). Akibatnya, seluruh layout tertutup dan hanya menyisakan layar hitam.
+- **Fix**: Menambahkan _closeForm() yang memverifikasi apakah `isSidePanel` bernilai true. Jika ya, _closeForm() hanya akan menjalankan `widget.onCloseSidePanel!()` yang menghapus produk dari panel tanpa melakukan pop pada `context`.
+- **Files**: `lib/presentation/pages/shared/produk_form_page.dart`
+- **Date**: 2026-06-13
 
 ### Fitur: Diskon Global & Auto-Submit UI
 - **Deskripsi**: (1) Menambahkan fitur Diskon Global pada halaman Kasir (Penjualan). Diskon Global ini mengurangi total belanja secara keseluruhan (selain diskon per-item), dan akan tersimpan ke database serta tampil pada nota kasir. (2) Menambahkan *event trigger* `onSubmitted` (tekan Enter pada *keyboard*) di berbagai form/dialog (seperti Input Diskon Item, Input Diskon Global, Input Jumlah Bayar, serta Input Password pada Halaman Login) agar langsung memicu aksi simpan/submit tanpa harus menekan tombol secara manual menggunakan kursor.

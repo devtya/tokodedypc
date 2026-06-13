@@ -52,6 +52,14 @@ class ProdukFormPage extends StatefulWidget {
 }
 
 class _ProdukFormPageState extends State<ProdukFormPage> {
+  void _closeForm() {
+    if (widget.isSidePanel && widget.onCloseSidePanel != null) {
+      widget.onCloseSidePanel!();
+    } else {
+      Navigator.maybePop(context);
+    }
+  }
+
   bool get _isEditing => _currentProduk != null;
 
   Produk? _currentProduk;
@@ -679,11 +687,11 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
       elevation: 0,
       leading: widget.isSidePanel
           ? IconButton(
-              onPressed: widget.onCloseSidePanel ?? () => Navigator.maybePop(context),
+              onPressed: _closeForm,
               icon: Icon(Icons.close, color: _colors.onSurface, size: 20),
             )
           : IconButton(
-              onPressed: () => Navigator.maybePop(context),
+              onPressed: _closeForm,
               icon: Icon(Icons.arrow_back, color: _colors.onSurface, size: 20),
             ),
       title: Column(
@@ -1105,7 +1113,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
           children: [
             Expanded(
               child: OutlinedButton(
-                onPressed: () => Navigator.maybePop(context),
+                onPressed: _closeForm,
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 14),
                   side: BorderSide(color: _colors.outline, width: 1.5),
@@ -1220,7 +1228,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
                   buttonText: produk.isArchived ? 'Buka Arsip' : 'Arsipkan',
                   onTap: () {
                     context.read<ProdukBloc>().add(ArchiveProdukEvent(produk.id!, !produk.isArchived));
-                    Navigator.pop(context); // Kembali ke halaman list
+                    _closeForm(); // Kembali ke halaman list
                   },
                 ),
                 const Divider(height: 32),
@@ -1302,7 +1310,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
           TextButton(
             onPressed: () {
               Navigator.pop(ctx); // Close dialog
-              Navigator.pop(context); // Close form page
+              _closeForm(); // Close form page
               context.read<ProdukBloc>().add(DeleteProdukEvent(produk.id!));
             },
             style: TextButton.styleFrom(foregroundColor: AppTheme.warningRed),
