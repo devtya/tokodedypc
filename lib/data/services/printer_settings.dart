@@ -12,6 +12,7 @@ class PrinterSettings {
   static const _keyNamaToko = 'printer_nama_toko';
   static const _keyAlamatToko = 'printer_alamat_toko';
   static const _keyFontSize = 'printer_font_size';
+  static const _keyUsbPrinterName = 'printer_usb_name';
 
   final SharedPreferences prefs;
 
@@ -46,4 +47,13 @@ class PrinterSettings {
 
   String get fontSize => prefs.getString(_keyFontSize) ?? 'normal';
   set fontSize(String v) => prefs.setString(_keyFontSize, v);
+
+  String? get usbPrinterName => prefs.getString(_keyUsbPrinterName);
+  set usbPrinterName(String? v) {
+    if (v == null) {
+      prefs.remove(_keyUsbPrinterName);
+    } else {
+      prefs.setString(_keyUsbPrinterName, v);
+    }
+  }
 }

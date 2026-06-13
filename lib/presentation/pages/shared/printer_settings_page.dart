@@ -1,11 +1,13 @@
 // ignore_for_file: deprecated_member_use
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_pos_printer_platform_image_3/flutter_pos_printer_platform_image_3.dart';
 
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/services/printer_service.dart';
 import '../../../data/services/printer_settings.dart';
-import '../../../data/services/network_printer_service.dart';
+import '../../../data/services/windows_usb_printer_service.dart';
 
 class PrinterSettingsPage extends StatefulWidget {
   const PrinterSettingsPage({super.key});
@@ -18,34 +20,100 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
   late PrinterSettings _settings;
   PrinterService? _printerService;
 
-  final _urlController = TextEditingController();
   final _namaTokoController = TextEditingController();
   final _alamatTokoController = TextEditingController();
 
   bool _isLoading = false;
   String _status = '';
   bool _printerConnected = false;
+  
+  List<PrinterDevice> _usbPrinters = [];
+  PrinterDevice? _selectedUsbPrinter;
+  StreamSubscription<PrinterDevice>? _printerSubscription;
 
   @override
   void initState() {
     super.initState();
     _settings = sl<PrinterSettings>();
     _initService();
-    _urlController.text = _settings.url;
     _namaTokoController.text = _settings.namaToko;
     _alamatTokoController.text = _settings.alamatToko;
-    _checkConnection();
+    
+    _scanPrinters();
   }
 
   void _initService() {
-    _printerService = NetworkPrinterService(baseUrl: _settings.url);
+    _printerService = sl<PrinterService>();
+  }
+
+  Future<void> _scanPrinters() async {
+    setState(() {
+      _isLoading = true;
+      _usbPrinters.clear();
+      _status = 'Mencari printer USB...';
+    });
+
+    try {
+      _printerSubscription?.cancel();
+      _printerSubscription = PrinterManager.instance.discover(type: PrinterType.usb).listen((device) {
+        if (!mounted) return;
+        setState(() {
+          if (!_usbPrinters.any((p) => p.name == device.name)) {
+            _usbPrinters.add(device);
+          }
+          
+          if (_settings.usbPrinterName != null && device.name == _settings.usbPrinterName) {
+            _selectedUsbPrinter = device;
+          }
+        });
+      });
+
+      // Let it scan for a few seconds
+      await Future.delayed(const Duration(seconds: 3));
+      
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        if (_usbPrinters.isEmpty) {
+          _status = 'Tidak ada printer USB yang ditemukan';
+        } else {
+          _status = 'Ditemukan ${_usbPrinters.length} printer. Silakan pilih.';
+        }
+      });
+      
+      if (_selectedUsbPrinter != null) {
+        _checkConnection();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+        _status = 'Error mencari printer: $e';
+      });
+    }
   }
 
   Future<void> _checkConnection() async {
+    if (_selectedUsbPrinter == null) {
+      setState(() {
+        _status = 'Belum ada printer yang dipilih';
+        _printerConnected = false;
+      });
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      _printerConnected = await _printerService!.isConnected();
-      _status = _printerConnected ? 'Printer terhubung' : 'Printer tidak terhubung';
+      final printerManager = PrinterManager.instance;
+      _printerConnected = await printerManager.connect(
+        type: PrinterType.usb,
+        model: UsbPrinterInput(
+          name: _selectedUsbPrinter!.name, 
+          productId: _selectedUsbPrinter!.productId, 
+          vendorId: _selectedUsbPrinter!.vendorId
+        ),
+      );
+      _status = _printerConnected ? 'Printer USB terhubung!' : 'Gagal menghubungkan printer';
     } catch (e) {
       _status = 'Error: $e';
       _printerConnected = false;
@@ -54,6 +122,16 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
   }
 
   Future<void> _testPrint() async {
+    if (_selectedUsbPrinter == null) {
+       ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih printer USB terlebih dahulu')));
+       return;
+    }
+    
+    // Save temporarily to settings so DI works for test
+    _settings.usbPrinterName = _selectedUsbPrinter!.name;
+    updatePrinterService();
+    _initService();
+
     setState(() => _isLoading = true);
     try {
       final success = await _printerService!.testPrint();
@@ -69,10 +147,13 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
   }
 
   void _saveSettings() {
-    _settings.url = _urlController.text;
+    _settings.usbPrinterName = _selectedUsbPrinter?.name;
     _settings.namaToko = _namaTokoController.text;
     _settings.alamatToko = _alamatTokoController.text;
+    
+    updatePrinterService();
     _initService();
+    
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Pengaturan disimpan')),
     );
@@ -80,7 +161,7 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
 
   @override
   void dispose() {
-    _urlController.dispose();
+    _printerSubscription?.cancel();
     _namaTokoController.dispose();
     _alamatTokoController.dispose();
     super.dispose();
@@ -122,7 +203,7 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'ALAMAT PRINT SERVER',
+                    'PILIH PRINTER USB',
                     style: TextStyle(
                       fontSize: 11,
                       color: AppTheme.neutralGrey,
@@ -131,25 +212,41 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Gunakan print_server.py di PC yang terhubung ke printer thermal USB.',
+                    'Pilih printer thermal kasir yang terhubung langsung ke PC.',
                     style: TextStyle(fontSize: 12, color: AppTheme.neutralGrey),
                   ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _urlController,
-                    decoration: const InputDecoration(
-                      hintText: 'http://192.168.1.100:5000',
-                      border: OutlineInputBorder(),
-                      prefixIcon: Icon(Icons.dns),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'IP PC yang menjalankan print_server.py',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppTheme.neutralGrey,
-                    ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<PrinterDevice>(
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 0),
+                          ),
+                          hint: const Text('Pilih Printer'),
+                          value: _selectedUsbPrinter,
+                          items: _usbPrinters.map((device) {
+                            return DropdownMenuItem(
+                              value: device,
+                              child: Text(device.name ?? 'Unknown Device'),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedUsbPrinter = val;
+                            });
+                            _checkConnection();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: _isLoading ? null : _scanPrinters,
+                        icon: const Icon(Icons.refresh),
+                        tooltip: 'Scan ulang printer',
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -318,8 +415,8 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Icon(Icons.refresh, size: 18),
-                          label: const Text('Cek Koneksi'),
+                              : const Icon(Icons.usb, size: 18),
+                          label: const Text('Cek USB'),
                         ),
                       ),
                       const SizedBox(width: 12),

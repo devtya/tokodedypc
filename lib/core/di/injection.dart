@@ -7,7 +7,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../data/database/app_database.dart';
 import '../../data/services/printer_service.dart';
 import '../../data/services/printer_settings.dart';
-import '../../data/services/network_printer_service.dart';
+import '../../data/services/windows_usb_printer_service.dart';
 
 import 'injection.config.dart';
 
@@ -16,17 +16,13 @@ final sl = GetIt.instance;
 void _initPrinterService() {
   final settings = sl<PrinterSettings>();
   sl.registerLazySingleton<PrinterService>(
-    () => NetworkPrinterService(baseUrl: settings.url),
+    () => WindowsUsbPrinterService(printerName: settings.usbPrinterName),
   );
 }
 
 void updatePrinterService() {
-  final settings = sl<PrinterSettings>();
-  sl.allowReassignment = true;
-  sl.registerLazySingleton<PrinterService>(
-    () => NetworkPrinterService(baseUrl: settings.url),
-  );
-  sl.allowReassignment = false;
+  sl.unregister<PrinterService>();
+  _initPrinterService();
 }
 
 @InjectableInit(
