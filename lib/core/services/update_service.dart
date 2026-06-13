@@ -132,15 +132,21 @@ class UpdateService {
     final script = '''
 @echo off
 echo Menginstal pembaruan Toko Dedy... Mohon tunggu sebentar.
-timeout /t 3 /nobreak > NUL
+
+:WAITLOOP
+timeout /t 1 /nobreak > NUL
+tasklist | find /i "$exeName" > NUL
+if not errorlevel 1 goto WAITLOOP
+
 xcopy /s /e /y "${extractDir.path}\\*" "$appDir\\"
-start "" "$appDir\\$exeName"
-del "%~f0"
+cd /d "$appDir"
+start "" "$exeName"
+exit
 ''';
     batFile.writeAsStringSync(script);
 
     // Execute bat detached and exit app
-    await Process.start('cmd.exe', ['/c', 'start', batPath], mode: ProcessStartMode.detached);
+    await Process.start('cmd.exe', ['/c', 'start', 'cmd.exe', '/c', batPath], mode: ProcessStartMode.detached);
     exit(0);
   }
 
