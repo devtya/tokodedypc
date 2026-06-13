@@ -32,7 +32,6 @@ import '../../data/repositories/purchase_order_repository_impl.dart' as _i640;
 import '../../data/repositories/riwayat_stok_repository_impl.dart' as _i561;
 import '../../data/repositories/supplier_repository_impl.dart' as _i994;
 import '../../data/repositories/transaksi_repository_impl.dart' as _i942;
-import '../../data/services/bluetooth_printer_service.dart' as _i187;
 import '../../data/services/printer_settings.dart' as _i219;
 import '../../data/services/receipt_generator.dart' as _i1016;
 import '../../data/services/storage_service.dart' as _i27;
@@ -129,9 +128,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i454.SupabaseClient>(() => registerModule.supabase);
     gh.lazySingleton<_i895.Connectivity>(() => registerModule.connectivity);
     gh.lazySingleton<_i919.UpdateService>(() => _i919.UpdateService());
-    gh.lazySingleton<_i187.BluetoothPrinterService>(
-      () => _i187.BluetoothPrinterService(),
-    );
     gh.lazySingleton<_i909.SupplierProductsDao>(
       () => _i909.SupplierProductsDao(gh<_i160.AppDatabase>()),
     );

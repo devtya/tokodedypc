@@ -55,7 +55,7 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
 
     try {
       _printerSubscription?.cancel();
-      _printerSubscription = PrinterManager.instance.discover(type: PrinterType.usb).listen((device) {
+      _printerSubscription = PrinterManager.instance.discovery(type: PrinterType.usb).listen((device) {
         if (!mounted) return;
         setState(() {
           if (!_usbPrinters.any((p) => p.name == device.name)) {
