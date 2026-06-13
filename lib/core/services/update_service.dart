@@ -6,6 +6,7 @@ import 'dart:io';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:archive/archive_io.dart';
 
 class UpdateInfo {
   final String version;
@@ -19,8 +20,8 @@ class UpdateInfo {
 @lazySingleton
 class UpdateService {
   String repoOwner = 'devtya';
-  String repoName = 'tokodedy';
-  static const String _assetName = 'tokodedy-setup.exe';
+  String repoName = 'tokodedypc';
+  static const String _assetName = 'tokodedypc-windows.zip';
 
   Future<UpdateInfo?> checkForUpdate() async {
     try {
@@ -50,21 +51,11 @@ class UpdateService {
       for (final asset in assets) {
         final name = asset['name'] as String? ?? '';
         final lowerName = name.toLowerCase();
-        if (lowerName.startsWith('tokodedy') && lowerName.endsWith('.exe')) {
+        // Look for .zip file since windows release packages it as zip
+        if (lowerName.endsWith('.zip')) {
           downloadUrl = asset['browser_download_url'] as String?;
           foundAssetName = name;
           break;
-        }
-      }
-
-      if (downloadUrl == null) {
-        for (final asset in assets) {
-          final name = asset['name'] as String? ?? '';
-          if (name == _assetName) {
-            downloadUrl = asset['browser_download_url'] as String?;
-            foundAssetName = name;
-            break;
-          }
         }
       }
 
@@ -107,8 +98,50 @@ class UpdateService {
     return file.path;
   }
 
-  Future<void> installUpdate(String filePath) async {
-    await Process.run(filePath, [], runInShell: true);
+  Future<void> installUpdate(String zipPath) async {
+    final tempDir = await getTemporaryDirectory();
+    final extractDir = Directory('${tempDir.path}\\TokoDedyUpdate');
+    
+    if (extractDir.existsSync()) {
+      extractDir.deleteSync(recursive: true);
+    }
+    extractDir.createSync();
+
+    // Extract zip
+    final bytes = File(zipPath).readAsBytesSync();
+    final archive = ZipDecoder().decodeBytes(bytes);
+    for (final file in archive) {
+      final filename = file.name;
+      if (file.isFile) {
+        final data = file.content as List<int>;
+        File('${extractDir.path}\\$filename')
+          ..createSync(recursive: true)
+          ..writeAsBytesSync(data);
+      } else {
+        Directory('${extractDir.path}\\$filename').createSync(recursive: true);
+      }
+    }
+
+    // Create update.bat
+    final exePath = Platform.resolvedExecutable;
+    final appDir = File(exePath).parent.path;
+    final exeName = exePath.split(Platform.pathSeparator).last;
+    
+    final batPath = '${tempDir.path}\\update_tokodedy.bat';
+    final batFile = File(batPath);
+    final script = '''
+@echo off
+echo Menginstal pembaruan Toko Dedy... Mohon tunggu sebentar.
+timeout /t 3 /nobreak > NUL
+xcopy /s /e /y "${extractDir.path}\\*" "$appDir\\"
+start "" "$appDir\\$exeName"
+del "%~f0"
+''';
+    batFile.writeAsStringSync(script);
+
+    // Execute bat detached and exit app
+    await Process.start('cmd.exe', ['/c', 'start', batPath], mode: ProcessStartMode.detached);
+    exit(0);
   }
 
   List<int> _extractVersion(String versionString) {

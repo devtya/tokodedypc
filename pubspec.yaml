@@ -68,6 +68,7 @@ dependencies:
   flutter_image_compress: ^2.4.0
   flutter_pos_printer_platform_image_3: ^1.2.4
   esc_pos_utils_plus: ^2.0.4
+  archive: ^3.6.1
 
 dev_dependencies:
   flutter_test:
