@@ -204,6 +204,8 @@ lib/
 - **Todo List**: Sebelum mengerjakan perbaikan arsitektur atau tech debt, WAJIB mengupdate file `IMPROVEMENTS.md` dengan menandai bagian yang akan dikerjakan beserta ringkasan cara/metode yang akan digunakan.
 - **i18n & Localization**: WAJIB menghindari teks *hardcoded* pada UI (terutama di dalam `Text()`, `SnackBar`, dll). Semua teks bahasa yang digunakan di halaman antarmuka harus didaftarkan melalui file `lib/i18n/strings.i18n.json` dan digenerate menggunakan `dart run slang`.
 - **Desktop Navigation / Sidebar**: Semua menu/halaman tidak boleh melakukan `Navigator.push` ke rute global untuk membuka layar penuh (kecuali untuk dialog/popup). Sidebar utama (`HomePage` sidebar) WAJIB selalu terlihat dan bisa diakses. Jika sebuah menu memiliki sub-halaman (misalnya Pembelian ke PembelianForm), WAJIB menggunakan **Local Navigator** (`Navigator` mandiri dengan GlobalKey di dalam konten halaman tersebut) agar navigasinya terkurung di sebelah kanan sidebar.
+- **Database Changes & Migrations**: Setiap kali ada perubahan pada tabel/database Drift (tambah/hapus/ubah kolom), WAJIB menjalankan code generation (`flutter pub run build_runner build -d`), menaikkan `schemaVersion`, dan WAJIB menambahkan logika migrasi di `onUpgrade` (seperti `m.addColumn`) agar tidak error (SqliteException) saat update.
+- **Purchase Order (PO) Handling**: Saat melakukan modifikasi/pengerjaan fitur PO, perhatikan bahwa bisa jadi terdapat **2 PO atau lebih yang aktif dari Toko/Supplier yang sama** bersamaan. Selalu gunakan identifier PO (`poId`) yang spesifik agar tidak tertukar/bingung saat menerima barang atau merubah data, jangan hanya menggunakan `supplierId`.
 
 
 ## Pembelian Pages Layout Rules (LOCKED — DO NOT CHANGE)
