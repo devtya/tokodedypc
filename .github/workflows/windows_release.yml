@@ -4,7 +4,7 @@ on:
   push:
     branches: [ "master", "main" ]
     tags:
-      - 'v*'
+      - 'v*.*.*'
   workflow_dispatch:
 
 jobs:
@@ -32,9 +32,11 @@ jobs:
         run: flutter build windows --release --dart-define=SUPABASE_URL="${{ secrets.SUPABASE_URL }}" --dart-define=SUPABASE_ANON_KEY="${{ secrets.SUPABASE_ANON_KEY }}"
 
       - name: Zip Release
+        if: startsWith(github.ref, 'refs/tags/')
         run: Compress-Archive -Path build\windows\x64\runner\Release\* -DestinationPath tokodedypc-windows.zip
 
       - name: Upload Artifact
+        if: startsWith(github.ref, 'refs/tags/')
         uses: actions/upload-artifact@v4
         with:
           name: tokodedypc-windows
