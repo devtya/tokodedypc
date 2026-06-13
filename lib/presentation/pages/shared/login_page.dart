@@ -10,7 +10,6 @@ import '../../blocs/auth/auth_state.dart';
 import '../../../i18n/strings.g.dart';
 import 'home_page.dart';
 
-
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -18,7 +17,8 @@ class LoginPage extends StatefulWidget {
   State<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMixin {
+class _LoginPageState extends State<LoginPage>
+    with SingleTickerProviderStateMixin {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -88,8 +88,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                 return;
               }
               try {
-                await Supabase.instance.client.auth
-                    .resetPasswordForEmail(
+                await Supabase.instance.client.auth.resetPasswordForEmail(
                   email,
                   redirectTo: 'io.tokodedy.app://reset-callback',
                 );
@@ -143,11 +142,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is Authenticated) {
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (_) => const HomePage()),
-            (route) => false,
-          );
+          // Biarkan main.dart yang mengatur routing ke _PinGate
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -161,10 +156,7 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
         body: Row(
           children: [
             // ── Panel Kiri: Branding ─────────────────────────────────
-            Expanded(
-              flex: 5,
-              child: _BrandingPanel(),
-            ),
+            Expanded(flex: 5, child: _BrandingPanel()),
 
             // ── Panel Kanan: Form Login ──────────────────────────────
             Expanded(
@@ -221,9 +213,13 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                 autofocus: true,
                                 decoration: InputDecoration(
                                   hintText: t.login.email_hint,
-                                  prefixIcon: const Icon(Icons.person_outline_rounded, size: 18),
+                                  prefixIcon: const Icon(
+                                    Icons.person_outline_rounded,
+                                    size: 18,
+                                  ),
                                 ),
-                                onSubmitted: (_) => FocusScope.of(context).nextFocus(),
+                                onSubmitted: (_) =>
+                                    FocusScope.of(context).nextFocus(),
                               ),
                               const SizedBox(height: 20),
 
@@ -243,7 +239,10 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                 obscureText: _obscurePassword,
                                 decoration: InputDecoration(
                                   hintText: t.login.password_hint,
-                                  prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
+                                  prefixIcon: const Icon(
+                                    Icons.lock_outline_rounded,
+                                    size: 18,
+                                  ),
                                   suffixIcon: IconButton(
                                     icon: Icon(
                                       _obscurePassword
@@ -252,7 +251,8 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                                       size: 18,
                                     ),
                                     onPressed: () => setState(
-                                      () => _obscurePassword = !_obscurePassword,
+                                      () =>
+                                          _obscurePassword = !_obscurePassword,
                                     ),
                                   ),
                                 ),
@@ -264,11 +264,13 @@ class _LoginPageState extends State<LoginPage> with SingleTickerProviderStateMix
                               Align(
                                 alignment: Alignment.centerRight,
                                 child: TextButton(
-                                  onPressed: () => _showForgotPasswordDialog(context),
+                                  onPressed: () =>
+                                      _showForgotPasswordDialog(context),
                                   style: TextButton.styleFrom(
                                     padding: EdgeInsets.zero,
                                     minimumSize: Size.zero,
-                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                   child: Text(
                                     'Lupa Password?',
@@ -336,11 +338,7 @@ class _BrandingPanel extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Color(0xFF0F1E14),
-            Color(0xFF1A3A28),
-            Color(0xFF0D2B1E),
-          ],
+          colors: [Color(0xFF0F1E14), Color(0xFF1A3A28), Color(0xFF0D2B1E)],
           stops: [0.0, 0.5, 1.0],
         ),
       ),
@@ -392,11 +390,10 @@ class _BrandingPanel extends StatelessWidget {
               children: [
                 // Logo
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 64,
+                  height: 64,
                   decoration: BoxDecoration(
-                    color: AppTheme.primaryGreen,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
                         color: AppTheme.primaryGreen.withValues(alpha: 0.4),
@@ -405,10 +402,12 @@ class _BrandingPanel extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: const Icon(
-                    Icons.point_of_sale_rounded,
-                    color: Colors.white,
-                    size: 28,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Image.asset(
+                      'assets/images/logo.png',
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -423,7 +422,7 @@ class _BrandingPanel extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Sistem Kasir Desktop\nuntuk Toko Anda',
+                  'Sistem Kasir Desktop\nuntuk Toko Dedy',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.55),
                     fontSize: 15,
@@ -448,10 +447,16 @@ class _BrandingPanel extends StatelessWidget {
                           width: 32,
                           height: 32,
                           decoration: BoxDecoration(
-                            color: AppTheme.primaryGreen.withValues(alpha: 0.15),
+                            color: AppTheme.primaryGreen.withValues(
+                              alpha: 0.15,
+                            ),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(item.$1, color: AppTheme.primaryGreen, size: 16),
+                          child: Icon(
+                            item.$1,
+                            color: AppTheme.primaryGreen,
+                            size: 16,
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Text(

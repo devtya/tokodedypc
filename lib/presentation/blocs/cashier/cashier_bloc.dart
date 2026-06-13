@@ -108,12 +108,13 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
     final existingIndex = cart.indexWhere(
       (item) => item.produkId == event.produkId,
     );
+    int highlightIdx;
     if (existingIndex >= 0) {
       final existing = cart[existingIndex];
-      cart.removeAt(existingIndex);
-      cart.insert(0, existing.copyWith(
+      cart[existingIndex] = existing.copyWith(
         jumlah: existing.jumlah + event.jumlah,
-      ));
+      );
+      highlightIdx = existingIndex;
     } else {
       cart.insert(0,
         CartItem(
@@ -126,15 +127,16 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
           konversi: event.konversi,
         ),
       );
+      highlightIdx = 0;
     }
-    emit(current.copyWith(cart: cart));
+    emit(current.copyWith(cart: cart, highlightedIndex: highlightIdx));
   }
 
   void _onRemoveFromCart(RemoveFromCart event, Emitter<CashierState> emit) {
     if (state is! CashierReady) return;
     final current = state as CashierReady;
     final cart = List<CartItem>.from(current.cart)..removeAt(event.index);
-    emit(current.copyWith(cart: cart));
+    emit(current.copyWith(cart: cart, clearHighlight: true));
   }
 
   Future<void> _onUpdateJumlah(UpdateJumlahCart event, Emitter<CashierState> emit) async {
@@ -146,7 +148,7 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
 
     if (event.jumlah <= 0) {
       cart.removeAt(event.index);
-      emit(current.copyWith(cart: cart));
+      emit(current.copyWith(cart: cart, clearHighlight: true));
       return;
     }
 
@@ -166,7 +168,7 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
     }
 
     cart[event.index] = cart[event.index].copyWith(jumlah: event.jumlah);
-    emit(current.copyWith(cart: cart));
+    emit(current.copyWith(cart: cart, clearHighlight: true));
   }
 
   void _onUpdateBayar(UpdateJumlahBayar event, Emitter<CashierState> emit) {
@@ -185,7 +187,7 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
         diskonValue: event.value,
       );
     }
-    emit(current.copyWith(cart: cart));
+    emit(current.copyWith(cart: cart, clearHighlight: true));
   }
 
   void _onSetGlobalDiskon(SetGlobalDiskon event, Emitter<CashierState> emit) {
@@ -194,6 +196,7 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
     emit(current.copyWith(
       globalDiskonTipe: event.tipe,
       globalDiskonValue: event.value,
+      clearHighlight: true,
     ));
   }
 
@@ -224,7 +227,7 @@ class CashierBloc extends Bloc<CashierEvent, CashierState> {
           );
         }
       }
-      emit(current.copyWith(cart: cart));
+      emit(current.copyWith(cart: cart, clearHighlight: true));
     }
   }
 

@@ -348,12 +348,37 @@ class SupabaseSyncService {
           ..where((t) => t.id.equals(item.id)))
             .go();
         flushed++;
-      } catch (_) {
+      } catch (e) {
+        print('Failed to flush queue item ${item.id} for table ${item.targetTable}: $e');
         // Biarkan di queue untuk retry berikutnya
       }
     }
 
     return flushed;
+  }
+
+  /// Push semua produk lokal ke Supabase secara paksa (berguna untuk migrasi schema atau force sync)
+  Future<int> forcePushSemuaProduk() async {
+    final rows = await _db.select(_db.produkTable).get();
+    int enqueuedOrPushed = 0;
+
+    for (final r in rows) {
+      await upsert('produk', {
+        'id': r.id,
+        'nama': r.nama,
+        'barcode': r.barcode,
+        'harga_beli': r.hargaBeli,
+        'harga_jual': r.hargaJual,
+        'stok': r.stok,
+        'stok_minimum': r.stokMinimum,
+        'kategori': r.kategori,
+        'satuan': r.satuan,
+        'image_url': r.imageUrl,
+        'is_archived': r.isArchived,
+      });
+      enqueuedOrPushed++;
+    }
+    return enqueuedOrPushed;
   }
 
   // ─────────────────────────────────────────────────

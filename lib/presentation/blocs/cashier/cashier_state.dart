@@ -25,12 +25,14 @@ class CashierReady extends CashierState {
   final double jumlahBayar;
   final int globalDiskonTipe;
   final double globalDiskonValue;
+  final int? highlightedIndex;
 
   const CashierReady({
     this.cart = const [],
     this.jumlahBayar = 0,
     this.globalDiskonTipe = 0,
     this.globalDiskonValue = 0,
+    this.highlightedIndex,
   });
 
   double get total => cart.fold(0.0, (sum, item) => sum + item.subtotal);
@@ -62,17 +64,20 @@ class CashierReady extends CashierState {
     double? jumlahBayar,
     int? globalDiskonTipe,
     double? globalDiskonValue,
+    int? highlightedIndex,
+    bool clearHighlight = false,
   }) {
     return CashierReady(
       cart: cart ?? this.cart,
       jumlahBayar: jumlahBayar ?? this.jumlahBayar,
       globalDiskonTipe: globalDiskonTipe ?? this.globalDiskonTipe,
       globalDiskonValue: globalDiskonValue ?? this.globalDiskonValue,
+      highlightedIndex: clearHighlight ? null : (highlightedIndex ?? this.highlightedIndex),
     );
   }
 
   @override
-  List<Object?> get props => [cart, jumlahBayar, globalDiskonTipe, globalDiskonValue];
+  List<Object?> get props => [cart, jumlahBayar, globalDiskonTipe, globalDiskonValue, highlightedIndex];
 }
 
 class CashierSuccess extends CashierState {
@@ -89,6 +94,7 @@ class CashierError extends CashierState {
   final double jumlahBayar;
   final int globalDiskonTipe;
   final double globalDiskonValue;
+  final int? highlightedIndex;
 
   const CashierError(
     this.message, {
@@ -96,6 +102,7 @@ class CashierError extends CashierState {
     this.jumlahBayar = 0,
     this.globalDiskonTipe = 0,
     this.globalDiskonValue = 0,
+    this.highlightedIndex,
   });
 
   double get total => cart.fold(0.0, (sum, item) => sum + item.subtotal);
@@ -123,5 +130,5 @@ class CashierError extends CashierState {
       jumlahBayar >= totalSetelahDiskon ? jumlahBayar - totalSetelahDiskon : 0;
 
   @override
-  List<Object?> get props => [message, cart, jumlahBayar, globalDiskonTipe, globalDiskonValue];
+  List<Object?> get props => [message, cart, jumlahBayar, globalDiskonTipe, globalDiskonValue, highlightedIndex];
 }
