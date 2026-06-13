@@ -140,9 +140,9 @@ if not errorlevel 1 goto WAITLOOP
 
 xcopy /s /e /y "${extractDir.path}\\*" "$appDir\\"
 cd /d "$appDir"
-start "" "$exeName"
+start "" "$exeName" < NUL > NUL 2>&1
 exit
-''';
+'''.replaceAll('\r\n', '\n').replaceAll('\n', '\r\n');
     batFile.writeAsStringSync(script);
 
     // Execute bat detached and exit app
