@@ -591,6 +591,12 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
                   _saved = false;
                   _isSaving = false;
                 });
+
+                if (_isEditing) {
+                  FocusScope.of(context).unfocus();
+                  return;
+                }
+
                 if (newId != null) {
                   _addedIds.add(newId);
                 }
