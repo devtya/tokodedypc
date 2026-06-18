@@ -66,7 +66,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -85,6 +85,9 @@ class AppDatabase extends _$AppDatabase {
         try { await m.addColumn(itemPembelianTable, itemPembelianTable.namaProduk); } catch (_) {}
         try { await m.addColumn(itemTransaksiTable, itemTransaksiTable.namaProduk); } catch (_) {}
         try { await m.addColumn(onlineOrderItemTable, onlineOrderItemTable.namaProduk); } catch (_) {}
+      }
+      if (from < 5) {
+        try { await m.addColumn(pendingSyncQueueTable, pendingSyncQueueTable.lastError); } catch (_) {}
       }
     },
     beforeOpen: (details) async {

@@ -7,6 +7,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/services/supabase_sync_service.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/theme/theme_cubit.dart';
@@ -28,14 +29,24 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final _updateService = sl<UpdateService>();
+  final _syncService = sl<SupabaseSyncService>();
   String _appVersion = '';
   bool _checkingUpdate = false;
   _SettingsSection _activeSection = _SettingsSection.tampilan;
+  int _pendingQueueCount = 0;
 
   @override
   void initState() {
     super.initState();
     _loadVersion();
+    _loadPendingQueueCount();
+  }
+
+  Future<void> _loadPendingQueueCount() async {
+    try {
+      final count = await _syncService.pendingQueueCount;
+      if (mounted) setState(() => _pendingQueueCount = count);
+    } catch (_) {}
   }
 
   Future<void> _loadVersion() async {
@@ -172,12 +183,13 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final navItems = [
-      (_SettingsSection.tampilan, Icons.palette_rounded, 'Tampilan'),
-      (_SettingsSection.printer, Icons.print_rounded, 'Printer'),
-      (_SettingsSection.pengguna, Icons.people_rounded, 'Pengguna'),
-      (_SettingsSection.pin, Icons.lock_rounded, 'PIN & Keamanan'),
-      (_SettingsSection.sync, Icons.cloud_sync_rounded, 'Sinkronisasi'),
-      (_SettingsSection.tentang, Icons.info_rounded, 'Tentang Aplikasi'),
+      (_SettingsSection.tampilan, Icons.palette_rounded, 'Tampilan', null),
+      (_SettingsSection.printer, Icons.print_rounded, 'Printer', null),
+      (_SettingsSection.pengguna, Icons.people_rounded, 'Pengguna', null),
+      (_SettingsSection.pin, Icons.lock_rounded, 'PIN & Keamanan', null),
+      (_SettingsSection.sync, Icons.cloud_sync_rounded, 'Sinkronisasi',
+          _pendingQueueCount > 0 ? _pendingQueueCount.toString() : null),
+      (_SettingsSection.tentang, Icons.info_rounded, 'Tentang Aplikasi', null),
     ];
 
     return Row(
@@ -205,11 +217,12 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: ListView(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                   children: navItems.map((item) {
-                    final (section, icon, label) = item;
+                    final (section, icon, label, badge) = item;
                     final isActive = _activeSection == section;
                     return _NavItem(
                       icon: icon,
                       label: label,
+                      badge: badge,
                       isActive: isActive,
                       onTap: () => setState(() => _activeSection = section),
                     );
@@ -414,6 +427,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
             return Column(
               children: [
+                // Card: Status Sinkronisasi
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(20),
@@ -459,11 +473,71 @@ class _SettingsPageState extends State<SettingsPage> {
                           child: ElevatedButton.icon(
                             onPressed: isSyncing
                                 ? null
-                                : () => context.read<SyncBloc>().add(const SyncTriggered()),
+                                : () {
+                                    context.read<SyncBloc>().add(const SyncTriggered());
+                                    _loadPendingQueueCount();
+                                  },
                             icon: const Icon(Icons.sync, size: 16),
                             label: Text(isSyncing ? 'Sedang Sinkron...' : 'Sinkronkan Sekarang'),
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Card: Antrian Sync
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.queue_rounded,
+                          color: _pendingQueueCount > 0 ? AppTheme.warningRed : AppTheme.primaryGreen,
+                          size: 28,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('Antrian Sinkronisasi',
+                                  style: TextStyle(fontWeight: FontWeight.w600)),
+                              const SizedBox(height: 2),
+                              Text(
+                                _pendingQueueCount > 0
+                                    ? '$_pendingQueueCount item menunggu untuk disinkronkan'
+                                    : 'Tidak ada data yang menunggu sinkronisasi',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: _pendingQueueCount > 0 ? AppTheme.warningRed : AppTheme.neutralGrey,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (_pendingQueueCount > 0)
+                          TextButton(
+                            onPressed: () {
+                              context.read<SyncBloc>().add(const SyncTriggered());
+                              _loadPendingQueueCount();
+                            },
+                            child: const Text('Kirim'),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                // Card: Utility
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Utilitas', style: TextStyle(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 12),
                         // Bersihkan duplikat satuan
                         OutlinedButton.icon(
@@ -621,12 +695,14 @@ class _SettingsPageState extends State<SettingsPage> {
 class _NavItem extends StatefulWidget {
   final IconData icon;
   final String label;
+  final String? badge;
   final bool isActive;
   final VoidCallback onTap;
 
   const _NavItem({
     required this.icon,
     required this.label,
+    this.badge,
     required this.isActive,
     required this.onTap,
   });
@@ -665,14 +741,32 @@ class _NavItemState extends State<_NavItem> {
                 color: widget.isActive ? AppTheme.primaryGreen : AppTheme.neutralGrey,
               ),
               const SizedBox(width: 10),
-              Text(
-                widget.label,
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.normal,
-                  color: widget.isActive ? AppTheme.primaryGreen : null,
+              Expanded(
+                child: Text(
+                  widget.label,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.normal,
+                    color: widget.isActive ? AppTheme.primaryGreen : null,
+                  ),
                 ),
               ),
+              if (widget.badge != null)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                  decoration: BoxDecoration(
+                    color: AppTheme.warningRed,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    widget.badge!,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
             ],
           ),
         ),

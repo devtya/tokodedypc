@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/drift.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -28,6 +29,9 @@ class SupabaseSyncService {
   final _onlineOrderEventController = StreamController<void>.broadcast();
   Stream<void> get onOnlineOrderReceived => _onlineOrderEventController.stream;
 
+  final _syncEventController = StreamController<SyncEvent>.broadcast();
+  Stream<SyncEvent> get onSyncEvent => _syncEventController.stream;
+
   static const _lastSyncKey = 'last_sync_v2';
 
   SupabaseSyncService({
@@ -51,6 +55,37 @@ class SupabaseSyncService {
     return !result.contains(ConnectivityResult.none) && result.isNotEmpty;
   }
 
+  /// Pastikan session Supabase valid, refresh jika perlu
+  Future<bool> _ensureValidSession() async {
+    try {
+      final session = _supabase.auth.currentSession;
+      if (session == null) {
+        debugPrint('[Sync] No Supabase session — akan antri');
+        return false;
+      }
+      // Cek apakah session expired atau mendekati expired (dalam 5 menit)
+      final expiresAt = session.expiresAt;
+      if (expiresAt != null) {
+        final expiry = DateTime.fromMillisecondsSinceEpoch(expiresAt * 1000);
+        final fiveMinFromNow = DateTime.now().add(const Duration(minutes: 5));
+        if (expiry.isBefore(fiveMinFromNow)) {
+          debugPrint('[Sync] Session mendekati expired, mencoba refresh...');
+          final refreshed = await _supabase.auth.refreshSession();
+          if (refreshed != null) {
+            debugPrint('[Sync] Session berhasil di-refresh');
+            return true;
+          }
+          debugPrint('[Sync] Gagal refresh session');
+          return false;
+        }
+      }
+      return true;
+    } catch (e) {
+      debugPrint('[Sync] Session check error: $e');
+      return false;
+    }
+  }
+
   /// Push: upsert record ke Supabase atau antri jika offline
   Future<void> upsert(String tableName, Map<String, dynamic> data) async {
     // Inject timestamp agar proses pull() di device lain bisa mendeteksi perubahan
@@ -62,34 +97,73 @@ class SupabaseSyncService {
     }
 
     if (await isOnline) {
+      final sessionValid = await _ensureValidSession();
+      if (!sessionValid) {
+        // Session tidak valid — beri tahu user, tetap antri
+        _syncEventController.add(SyncEvent(
+          type: 'auth_expired',
+          tableName: tableName,
+          recordId: data['id'] as String? ?? '',
+          error: 'Sesi cloud habis. Hubungi pemilik toko untuk login ulang.',
+        ));
+        debugPrint('[Sync] Session invalid, enqueuing upsert: $tableName ${data['id']}');
+        await _enqueue(tableName, 'upsert', data['id'] as String, data);
+        return;
+      }
+
       try {
         await _supabase.from(tableName).upsert(data, onConflict: 'id');
-        print('Supabase sync upsert success: $tableName ${data['id']}');
+        debugPrint('Supabase sync upsert success: $tableName ${data['id']}');
         return;
       } catch (e) {
-        print('Supabase sync upsert failed for $tableName ${data['id']}: $e');
+        debugPrint('Supabase sync upsert failed for $tableName ${data['id']}: $e');
+        _syncEventController.add(SyncEvent(
+          type: 'upsert_failed',
+          tableName: tableName,
+          recordId: data['id'] as String? ?? '',
+          error: e.toString(),
+        ));
         // Jika gagal, antri
       }
     }
     // Offline → antri
-    print('Supabase offline, enqueuing upsert: $tableName ${data['id']}');
+    debugPrint('Supabase offline, enqueuing upsert: $tableName ${data['id']}');
     await _enqueue(tableName, 'upsert', data['id'] as String, data);
   }
 
   /// Delete: hapus record dari Supabase atau antri jika offline
   Future<void> delete(String tableName, String id) async {
     if (await isOnline) {
+      final sessionValid = await _ensureValidSession();
+      if (!sessionValid) {
+        _syncEventController.add(SyncEvent(
+          type: 'auth_expired',
+          tableName: tableName,
+          recordId: id,
+          error: 'Sesi cloud habis. Hubungi pemilik toko untuk login ulang.',
+        ));
+        debugPrint('[Sync] Session invalid, enqueuing delete: $tableName $id');
+        await _enqueue(tableName, 'delete', id, {'id': id});
+        return;
+      }
+
       try {
         await _supabase.from(tableName).delete().eq('id', id);
-        print('Supabase sync delete success: $tableName $id');
+        debugPrint('Supabase sync delete success: $tableName $id');
         return;
       } catch (e) {
-        print('Supabase sync delete failed for $tableName $id: $e');
+        debugPrint('Supabase sync delete failed for $tableName $id: $e');
+        _syncEventController.add(SyncEvent(
+          type: 'delete_failed',
+          tableName: tableName,
+          recordId: id,
+          error: e.toString(),
+        ));
         // Jika gagal, antri
       }
     }
     // Offline → antri
-    print('Supabase offline, enqueuing delete: $tableName $id');
+    debugPrint('Supabase offline, enqueuing delete: $tableName $id');
     await _enqueue(tableName, 'delete', id, {'id': id});
   }
 
@@ -143,12 +217,41 @@ class SupabaseSyncService {
     return pulledTables;
   }
 
+  /// Trigger notifikasi ke listeners bahwa ada order online baru
+  void notifyOnlineOrderReceived() => _onlineOrderEventController.add(null);
+
+  /// Periodic polling timer untuk auto-refresh online orders (fallback)
+  Timer? _orderPollingTimer;
+
+  /// Mulai periodic polling online orders setiap [interval].
+  /// Berguna sebagai fallback jika Realtime subscription gagal.
+  void startPeriodicOrderPolling({Duration interval = const Duration(seconds: 30)}) {
+    _orderPollingTimer?.cancel();
+    _orderPollingTimer = Timer.periodic(interval, (_) async {
+      try {
+        await pullOnlineOrdersForce();
+        notifyOnlineOrderReceived();
+        debugPrint('[Polling] Online orders refreshed');
+      } catch (e) {
+        debugPrint('[Polling] Gagal refresh online orders: $e');
+      }
+    });
+  }
+
+  /// Hentikan periodic polling
+  void stopPeriodicOrderPolling() {
+    _orderPollingTimer?.cancel();
+    _orderPollingTimer = null;
+  }
+
   bool _isRealtimeInitialized = false;
 
   /// Initialize realtime listener for Supabase
   void initRealtimeListeners() {
     if (_isRealtimeInitialized) return;
     _isRealtimeInitialized = true;
+
+    debugPrint('[Realtime] Initiating subscription...');
 
     _supabase
         .channel('public:online_orders')
@@ -158,14 +261,15 @@ class SupabaseSyncService {
             table: 'online_orders',
             callback: (payload) async {
               final newRecord = payload.newRecord;
+              debugPrint('[Realtime] INSERT detected: ${newRecord['id']} status=${newRecord['status']}');
               if (newRecord['status'] == 'pending' || newRecord['status'] == 'shipped') {
                 final orderId = newRecord['id'] as String;
                 final customerId = newRecord['customer_id'] as String;
                 final totalHarga = newRecord['total_harga'];
 
                 // Jeda awal: beri waktu agar app pelanggan selesai insert semua item ke Supabase
-                // Sesuai request user, kita beri delay 1 menit (60 detik) agar data lengkap masuk
-                await Future.delayed(const Duration(minutes: 1));
+                // Dikurangi dari 1 menit menjadi 3 detik agar kasir cepat menerima notifikasi
+                await Future.delayed(const Duration(seconds: 3));
 
                 // Pull data order & customer dulu
                 await pull();
@@ -183,6 +287,7 @@ class SupabaseSyncService {
                         .select()
                         .eq('online_order_id', orderId);
                     fetchedItems = (result as List).cast<Map<String, dynamic>>();
+                    debugPrint('[Realtime] Items retry $attempt: ${fetchedItems.length} items');
                   } catch (_) {}
 
                   if (fetchedItems.isNotEmpty) break;
@@ -222,7 +327,18 @@ class SupabaseSyncService {
                 _onlineOrderEventController.add(null);
               }
             })
-        .subscribe();
+        .subscribe((status, error) {
+          if (error != null) {
+            debugPrint('[Realtime] Subscription error: $error');
+            // Auto-retry setelah 10 detik
+            _isRealtimeInitialized = false;
+            Future.delayed(const Duration(seconds: 10), () {
+              initRealtimeListeners();
+            });
+          } else {
+            debugPrint('[Realtime] Subscription status: $status');
+          }
+        });
   }
 
   /// Force pull khusus untuk online_orders, online_customers, dan online_order_items
@@ -328,9 +444,23 @@ class SupabaseSyncService {
     return _prefs.getBool('initial_sync_done_v2') == true;
   }
 
+  /// Batas maksimal retry per item sebelum dihapus dari queue
+  static const int _maxRetryPerItem = 5;
+
   /// Flush antrian operasi yang belum berhasil di-sync
   Future<int> flushQueue() async {
     if (!(await isOnline)) return 0;
+
+    final sessionValid = await _ensureValidSession();
+    if (!sessionValid) {
+      _syncEventController.add(const SyncEvent(
+        type: 'auth_expired',
+        tableName: 'queue',
+        recordId: '',
+        error: 'Sesi cloud habis — flush queue ditunda. Login ulang dengan akun owner.',
+      ));
+      return 0;
+    }
 
     final queue = await _db.select(_db.pendingSyncQueueTable).get();
     int flushed = 0;
@@ -349,12 +479,49 @@ class SupabaseSyncService {
             .go();
         flushed++;
       } catch (e) {
-        print('Failed to flush queue item ${item.id} for table ${item.targetTable}: $e');
-        // Biarkan di queue untuk retry berikutnya
+        debugPrint('Failed to flush queue item ${item.id} for table ${item.targetTable}: $e');
+        // Hitung retry via payload JSON
+        try {
+          final payload = jsonDecode(item.payload) as Map<String, dynamic>;
+          int retryCount = payload['_retryCount'] as int? ?? 0;
+          retryCount++;
+
+          if (retryCount >= _maxRetryPerItem) {
+            // Hapus dari queue — sudah terlalu sering gagal
+            await (_db.delete(_db.pendingSyncQueueTable)
+              ..where((t) => t.id.equals(item.id)))
+                .go();
+            debugPrint('[Sync] Queue item ${item.id} (${item.targetTable}/${item.recordId}) '
+                'dihapus setelah $retryCount× gagal');
+            _syncEventController.add(SyncEvent(
+              type: 'permanent_failure',
+              tableName: item.targetTable,
+              recordId: item.recordId,
+              error: 'Item gagal sync $retryCount× dan dihapus dari antrian. Periksa koneksi/hubungi owner.',
+            ));
+          } else {
+            // Update retry count di payload + simpan error
+            payload['_retryCount'] = retryCount;
+            await (_db.update(_db.pendingSyncQueueTable)
+              ..where((t) => t.id.equals(item.id)))
+                .write(PendingSyncQueueTableCompanion(
+                  payload: Value(jsonEncode(payload)),
+                  lastError: Value(e.toString()),
+                ));
+          }
+        } catch (_) {
+          // Jika gagal parse payload, biarkan di queue
+        }
       }
     }
 
     return flushed;
+  }
+
+  /// Jumlah item yang masih mengantri di pending sync queue
+  Future<int> get pendingQueueCount async {
+    final items = await _db.select(_db.pendingSyncQueueTable).get();
+    return items.length;
   }
 
   /// Push semua produk lokal ke Supabase secara paksa (berguna untuk migrasi schema atau force sync)
@@ -389,14 +556,16 @@ class SupabaseSyncService {
     String tableName,
     String operation,
     String recordId,
-    Map<String, dynamic> payload,
-  ) async {
+    Map<String, dynamic> payload, {
+    String? lastError,
+  }) async {
     await _db.into(_db.pendingSyncQueueTable).insert(
       PendingSyncQueueTableCompanion(
         targetTable: Value(tableName),
         operation: Value(operation),
         recordId: Value(recordId),
         payload: Value(jsonEncode(payload)),
+        lastError: Value(lastError),
       ),
     );
   }
@@ -460,6 +629,7 @@ final Map<String, _Inserter> _inserters = {
       kategori: Value(r['kategori'] as String?),
       satuan: Value(r['satuan'] as String? ?? 'pcs'),
       imageUrl: Value(r['image_url'] as String?),
+      isArchived: Value(r['is_archived'] as bool? ?? false),
       updatedAt: Value(_parseDate(r['updated_at'])),
       createdAt: Value(_parseDate(r['created_at'])),
     ));
@@ -689,4 +859,26 @@ DateTime _parseDate(dynamic v) {
   if (v == null) return DateTime.now();
   if (v is DateTime) return v;
   return DateTime.tryParse(v.toString()) ?? DateTime.now();
+}
+
+/// Event yang dipancarkan oleh [SupabaseSyncService] untuk memberi tahu UI
+/// tentang kegagalan sinkronisasi.
+class SyncEvent {
+  final String type; // 'upsert_failed' | 'delete_failed' | 'auth_expired' | 'permanent_failure'
+  final String tableName;
+  final String recordId;
+  final String error;
+  final DateTime timestamp;
+
+  const SyncEvent({
+    required this.type,
+    required this.tableName,
+    required this.recordId,
+    required this.error,
+    DateTime? timestamp,
+  }) : timestamp = timestamp ?? DateTime.now();
+
+  @override
+  String toString() =>
+      'SyncEvent($type, table=$tableName, id=$recordId, error=$error, time=$timestamp)';
 }

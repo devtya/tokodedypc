@@ -21,6 +21,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
+      // Validasi session Supabase dulu (cek apakah token masih valid)
+      final user = await authRepository.fetchCurrentUser();
+      if (user != null) {
+        emit(Authenticated(user));
+        return;
+      }
+    } catch (_) {
+      // Network error — fallback ke cache lokal
+    }
+
+    // Fallback: cache lokal (offline mode)
+    try {
       final user = authRepository.getCurrentUser();
       if (user != null) {
         emit(Authenticated(user));

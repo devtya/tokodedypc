@@ -8,5 +8,6 @@ class PendingSyncQueueTable extends Table {
   TextColumn get operation => text()(); // 'upsert' | 'delete'
   TextColumn get recordId  => text()(); // UUID record
   TextColumn get payload   => text()(); // JSON encoded data
+  TextColumn? get lastError => text().nullable()(); // pesan error terakhir
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 }
