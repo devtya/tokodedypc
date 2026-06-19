@@ -111,6 +111,7 @@ class WindowsUsbPrinterService implements PrinterService {
     
     bytes += generator.emptyLines(3);
     bytes += generator.cut();
+    bytes += generator.drawer();
 
     return bytes;
   }
@@ -159,6 +160,17 @@ class WindowsUsbPrinterService implements PrinterService {
     bytes += generator.emptyLines(3);
     bytes += generator.cut();
     
+    return await _printBytes(bytes);
+  }
+
+  @override
+  Future<bool> openCashDrawer() async {
+    if (printerName == null || printerName!.isEmpty) throw Exception("Printer USB belum diatur.");
+
+    final profile = await CapabilityProfile.load();
+    final generator = Generator(PaperSize.mm58, profile);
+    List<int> bytes = [];
+    bytes += generator.drawer();
     return await _printBytes(bytes);
   }
 

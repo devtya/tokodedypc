@@ -97,6 +97,9 @@ class Win32Window {
 
   // window handle for hosted content.
   HWND child_content_ = nullptr;
+
+  // DPI scale factor for high-DPI awareness.
+  double dpi_scale_factor_ = 1.0;
 };
 
 #endif  // RUNNER_WIN32_WINDOW_H_

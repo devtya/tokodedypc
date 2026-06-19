@@ -153,8 +153,8 @@ class _CashierPageState extends State<CashierPage> {
     await _checkPrinterConnection();
     if (!mounted) return;
     
-    double localBayar = data.totalSetelahDiskon;
-    final bayarCtrl = TextEditingController(text: localBayar.toStringAsFixed(0));
+    double localBayar = 0;
+    final bayarCtrl = TextEditingController();
     
     final confirmed = await showDialog<bool>(
       context: context,
@@ -330,6 +330,22 @@ class _CashierPageState extends State<CashierPage> {
       _printerConnected = false;
     }
     if (mounted) setState(() {});
+  }
+
+  Future<void> _openCashDrawer() async {
+    try {
+      final printer = sl<PrinterService>();
+      await printer.openCashDrawer();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(t.cashier.printer_disconnected),
+            backgroundColor: AppTheme.warningRed,
+          ),
+        );
+      }
+    }
   }
 
   void _showPrinterDialog() {
@@ -925,6 +941,30 @@ class _CashierPageState extends State<CashierPage> {
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: _printerConnected ? AppTheme.primaryGreen : AppTheme.neutralGrey,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Tooltip(
+                                message: t.cashier.btn_open_drawer,
+                                child: InkWell(
+                                  onTap: _printerConnected ? _openCashDrawer : null,
+                                  borderRadius: BorderRadius.circular(6),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      border: Border.all(
+                                        color: _printerConnected
+                                            ? AppTheme.neutralGrey.withValues(alpha: 0.5)
+                                            : AppTheme.neutralGrey.withValues(alpha: 0.25),
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Icon(
+                                      Icons.door_front_door_rounded,
+                                      size: 16,
+                                      color: _printerConnected ? AppTheme.neutralGrey : AppTheme.neutralGrey.withValues(alpha: 0.5),
+                                    ),
+                                  ),
                                 ),
                               ),
                               const Spacer(),

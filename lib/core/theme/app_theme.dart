@@ -95,6 +95,25 @@ class AppTheme {
   static const double radius3xl = 26;
   static const double radius4xl = 31;
 
+  // ── SPACING SCALE (Desktop-First) ────────────────────────────────
+  static const double spaceXs = 4.0;
+  static const double spaceSm = 8.0;
+  static const double spaceMd = 12.0;
+  static const double spaceLg = 16.0;
+  static const double spaceXl = 24.0;
+  static const double spaceXxl = 32.0;
+
+  // ── DESKTOP GRID LAYOUT CONSTRAINTS ──────────────────────────────
+  static const double minSidebarWidth = 72.0;
+  static const double maxSidebarWidth = 240.0;
+  static const double maxSidePanelWidth = 460.0;
+  static const double minSidePanelWidth = 360.0;
+
+  // ── DIALOG WIDTHS ────────────────────────────────────────────────
+  static const double dialogWidthSm = 400.0;
+  static const double dialogWidthMd = 600.0;
+  static const double dialogWidthLg = 900.0;
+
   // ── Font ─────────────────────────────────────────────────────────
   static final String? fontFamily = GoogleFonts.inter().fontFamily;
 

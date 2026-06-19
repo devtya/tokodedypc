@@ -420,20 +420,23 @@ class _Sidebar extends StatelessWidget {
         children: [
           // Logo + Collapse Toggle
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+            padding: EdgeInsets.symmetric(
+              horizontal: collapsed ? AppTheme.spaceSm : AppTheme.spaceMd,
+              vertical: AppTheme.spaceLg,
+            ),
             child: Row(
               children: [
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: collapsed ? 32 : 40,
+                  height: collapsed ? 32 : 40,
                   decoration: BoxDecoration(
                     color: AppTheme.primaryGreen,
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusMd),
                   ),
-                  child: const Icon(Icons.point_of_sale_rounded, color: Colors.white, size: 22),
+                  child: Icon(Icons.point_of_sale_rounded, color: Colors.white, size: collapsed ? 16 : 22),
                 ),
                 if (!collapsed) ...[
-                  const SizedBox(width: 10),
+                  const SizedBox(width: AppTheme.spaceSm),
                   Expanded(
                     child: Text(
                       AppConstants.appName,
@@ -461,8 +464,8 @@ class _Sidebar extends StatelessWidget {
             ),
           ),
 
-          const Divider(color: AppTheme.white06, height: 1),
-          const SizedBox(height: 8),
+          Divider(color: Theme.of(context).dividerTheme.color, height: 1),
+          const SizedBox(height: AppTheme.spaceSm),
 
           // Nav Items
           Expanded(
@@ -1132,10 +1135,12 @@ class _MetricCard extends StatelessWidget {
               Row(children: [
                 Icon(icon, color: Colors.white70, size: 18),
                 const SizedBox(width: 8),
-                Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5)),
+                Flexible(
+                  child: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12, fontWeight: FontWeight.w600, letterSpacing: 0.5), overflow: TextOverflow.ellipsis),
+                ),
               ]),
               const SizedBox(height: 10),
-              Text(value, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -1)),
+              Text(value, style: const TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.w800, letterSpacing: -1), maxLines: 1, overflow: TextOverflow.ellipsis),
             ],
           ),
         ),
@@ -1164,9 +1169,9 @@ class _MetricCard extends StatelessWidget {
               child: Icon(icon, color: color, size: 18),
             ),
             const SizedBox(height: 12),
-            Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12)),
+            Text(label, style: const TextStyle(color: Colors.grey, fontSize: 12), maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 4),
-            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5)),
+            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, letterSpacing: -0.5), maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       ),

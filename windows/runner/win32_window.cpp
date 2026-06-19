@@ -132,12 +132,12 @@ bool Win32Window::Create(const std::wstring& title,
                               static_cast<LONG>(origin.y)};
   HMONITOR monitor = MonitorFromPoint(target_point, MONITOR_DEFAULTTONEAREST);
   UINT dpi = FlutterDesktopGetDpiForMonitor(monitor);
-  double scale_factor = dpi / 96.0;
+  dpi_scale_factor_ = dpi / 96.0;
 
   HWND window = CreateWindow(
       window_class, title.c_str(), WS_OVERLAPPEDWINDOW,
-      Scale(origin.x, scale_factor), Scale(origin.y, scale_factor),
-      Scale(size.width, scale_factor), Scale(size.height, scale_factor),
+      Scale(origin.x, dpi_scale_factor_), Scale(origin.y, dpi_scale_factor_),
+      Scale(size.width, dpi_scale_factor_), Scale(size.height, dpi_scale_factor_),
       nullptr, nullptr, GetModuleHandle(nullptr), this);
 
   if (!window) {
@@ -204,6 +204,13 @@ Win32Window::MessageHandler(HWND hwnd,
         MoveWindow(child_content_, rect.left, rect.top, rect.right - rect.left,
                    rect.bottom - rect.top, TRUE);
       }
+      return 0;
+    }
+
+    case WM_GETMINMAXINFO: {
+      auto mmi = reinterpret_cast<MINMAXINFO*>(lparam);
+      mmi->ptMinTrackSize.x = Scale(1280, dpi_scale_factor_);
+      mmi->ptMinTrackSize.y = Scale(720, dpi_scale_factor_);
       return 0;
     }
 

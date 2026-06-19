@@ -5,5 +5,6 @@ abstract class PrinterService {
   Future<bool> printPickingList(ReceiptData data);
   Future<bool> testPrint();
   Future<bool> isConnected();
+  Future<bool> openCashDrawer();
   String get printerType;
 }

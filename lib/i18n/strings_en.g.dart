@@ -313,6 +313,9 @@ class Translations$cashier$en {
 	/// en: 'Pengaturan'
 	String get printer_settings => 'Pengaturan';
 
+	/// en: 'Buka Laci'
+	String get btn_open_drawer => 'Buka Laci';
+
 	/// en: 'Keranjang'
 	String get cart_title => 'Keranjang';
 
@@ -594,6 +597,7 @@ extension on Translations {
 			'cashier.printer_connected' => 'Printer terhubung',
 			'cashier.printer_disconnected' => 'Printer tidak terhubung',
 			'cashier.printer_settings' => 'Pengaturan',
+			'cashier.btn_open_drawer' => 'Buka Laci',
 			'cashier.cart_title' => 'Keranjang',
 			'cashier.cart_empty' => 'Keranjang kosong',
 			'cashier.cart_empty_hint' => 'Cari atau scan produk di panel kiri',
