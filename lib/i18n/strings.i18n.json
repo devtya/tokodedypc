@@ -137,6 +137,12 @@
     },
     "dialog_unit": {
       "title": "Pilih Satuan -"
+    },
+    "dialog_print": {
+      "title": "Cetak Struk?",
+      "btn_yes": "Ya, Cetak",
+      "btn_no": "Tidak",
+      "drawer_failed": "Gagal membuka laci otomatis, gunakan kunci manual"
     }
   }
 }

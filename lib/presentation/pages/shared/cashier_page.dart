@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 
@@ -6,6 +7,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/pending_order.dart';
 import '../../../domain/repositories/pending_order_repository.dart';
+import '../../../domain/repositories/produk_repository.dart';
 import '../../../domain/usecases/produk/get_all_produk.dart';
 import '../../../domain/usecases/produk/search_produk.dart';
 import '../../../domain/entities/produk.dart';
@@ -20,7 +22,6 @@ import '../../blocs/cashier/cashier_event.dart';
 import '../../blocs/cashier/cashier_state.dart';
 import '../../utils/dialog_utils.dart';
 import 'printer_settings_page.dart';
-import 'share_receipt_page.dart';
 import '../../../i18n/strings.g.dart';
 
 class CashierPage extends StatefulWidget {
@@ -38,6 +39,7 @@ class _CashierPageState extends State<CashierPage> {
   );
   final _bayarController = TextEditingController();
   final _searchController = TextEditingController();
+  final _searchFocusNode = FocusNode();
   final ScrollController _cartScrollController = ScrollController();
 
   // State for inline product search
@@ -71,6 +73,7 @@ class _CashierPageState extends State<CashierPage> {
 
   @override
   void dispose() {
+    _searchFocusNode.dispose();
     _cartScrollController.dispose();
     _searchController.dispose();
     _bayarController.dispose();
@@ -755,7 +758,7 @@ class _CashierPageState extends State<CashierPage> {
           final generator = ReceiptGenerator(
             namaToko: settings.namaToko,
             alamatToko: settings.alamatToko,
-            kasir: '', 
+            kasir: '',
           );
           final receipt = generator.fromTransaction(
             transaksiId: state.transaksiId,
@@ -764,13 +767,42 @@ class _CashierPageState extends State<CashierPage> {
             kembalian: _lastKembalian,
           );
 
-          if (context.mounted) {
-            await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => ShareReceiptPage(receipt: receipt),
+          if (_printerConnected && context.mounted) {
+            final wantPrint = await showDialog<bool>(
+              context: context,
+              builder: (ctx) => AlertDialog(
+                title: Text(t.cashier.dialog_print.title),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx, false),
+                    child: Text(t.cashier.dialog_print.btn_no),
+                  ),
+                  FilledButton(
+                    onPressed: () => Navigator.pop(ctx, true),
+                    child: Text(t.cashier.dialog_print.btn_yes),
+                  ),
+                ],
               ),
             );
+
+            if (wantPrint == true) {
+              await sl<PrinterService>().printReceipt(receipt);
+            } else {
+              await sl<PrinterService>().openCashDrawer();
+            }
+          } else {
+            try {
+              await sl<PrinterService>().openCashDrawer();
+            } catch (_) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(t.cashier.dialog_print.drawer_failed),
+                    backgroundColor: AppTheme.warningRed,
+                  ),
+                );
+              }
+            }
           }
 
           _lastCartItems = null;
@@ -797,7 +829,14 @@ class _CashierPageState extends State<CashierPage> {
       },
       builder: (context, state) {
         final data = _resolveCashierData(state);
-        return Scaffold(
+        return Focus(
+          autofocus: true,
+          child: CallbackShortcuts(
+            bindings: {
+              SingleActivator(LogicalKeyboardKey.keyF, control: true):
+                  _searchFocusNode.requestFocus,
+            },
+            child: Scaffold(
           // No AppBar — kita sudah punya TopBar di shell desktop
           body: LayoutBuilder(
             builder: (context, constraints) {
@@ -825,6 +864,7 @@ class _CashierPageState extends State<CashierPage> {
                           padding: const EdgeInsets.all(16),
                           child: TextField(
                             controller: _searchController,
+                            focusNode: _searchFocusNode,
                             autofocus: true,
                             decoration: InputDecoration(
                               hintText: t.cashier.search_hint,
@@ -844,14 +884,17 @@ class _CashierPageState extends State<CashierPage> {
                               setState(() {});
                               _searchProducts(value);
                             },
-                            onSubmitted: (value) {
+                            onSubmitted: (value) async {
                               if (value.isNotEmpty) {
-                                final exactMatch = _products.where((p) => p.barcode == value).toList();
-                                if (exactMatch.isNotEmpty) {
-                                  _pilihProduk(exactMatch.first);
+                                final repo = sl<ProdukRepository>();
+                                final barcodeMatch = await repo.getProdukByBarcode(value);
+                                if (barcodeMatch != null) {
+                                  _pilihProduk(barcodeMatch);
                                   _searchController.clear();
                                   _searchProducts('');
-                                } else if (_products.length == 1) {
+                                  return;
+                                }
+                                if (_products.length == 1) {
                                   _pilihProduk(_products.first);
                                   _searchController.clear();
                                   _searchProducts('');
@@ -1042,6 +1085,8 @@ class _CashierPageState extends State<CashierPage> {
                 ],
               );
             },
+          ),
+            ),
           ),
         );
       },

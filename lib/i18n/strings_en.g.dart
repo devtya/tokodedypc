@@ -365,6 +365,7 @@ class Translations$cashier$en {
 	late final Translations$cashier$dialog_debt$en dialog_debt = Translations$cashier$dialog_debt$en._(_root);
 	late final Translations$cashier$dialog_pending$en dialog_pending = Translations$cashier$dialog_pending$en._(_root);
 	late final Translations$cashier$dialog_unit$en dialog_unit = Translations$cashier$dialog_unit$en._(_root);
+	late final Translations$cashier$dialog_print$en dialog_print = Translations$cashier$dialog_print$en._(_root);
 }
 
 // Path: cashier.dialog_payment
@@ -532,6 +533,27 @@ class Translations$cashier$dialog_unit$en {
 	String get title => 'Pilih Satuan -';
 }
 
+// Path: cashier.dialog_print
+class Translations$cashier$dialog_print$en {
+	Translations$cashier$dialog_print$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Cetak Struk?'
+	String get title => 'Cetak Struk?';
+
+	/// en: 'Ya, Cetak'
+	String get btn_yes => 'Ya, Cetak';
+
+	/// en: 'Tidak'
+	String get btn_no => 'Tidak';
+
+	/// en: 'Gagal membuka laci otomatis, gunakan kunci manual'
+	String get drawer_failed => 'Gagal membuka laci otomatis, gunakan kunci manual';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -646,6 +668,10 @@ extension on Translations {
 			'cashier.dialog_pending.notes' => 'Catatan',
 			'cashier.dialog_pending.saved_success' => 'Pending disimpan untuk',
 			'cashier.dialog_unit.title' => 'Pilih Satuan -',
+			'cashier.dialog_print.title' => 'Cetak Struk?',
+			'cashier.dialog_print.btn_yes' => 'Ya, Cetak',
+			'cashier.dialog_print.btn_no' => 'Tidak',
+			'cashier.dialog_print.drawer_failed' => 'Gagal membuka laci otomatis, gunakan kunci manual',
 			_ => null,
 		};
 	}

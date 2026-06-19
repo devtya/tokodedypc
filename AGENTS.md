@@ -533,3 +533,15 @@ Current: **1.0.7** (tag: v1.0.7)
 - **Cara pakai**: Di Beranda (Dashboard) → cari bagian "Update Harga Barang" → ketuk "Lihat Semua" → ketuk item produk manapun untuk mengeditnya.
 - **Files**: `lib/presentation/pages/shared/riwayat_harga_page.dart`, `lib/presentation/pages/shared/home_page.dart`, `lib/domain/repositories/produk_repository.dart`, `lib/data/repositories/produk_repository_impl.dart`, `lib/presentation/blocs/riwayat_harga/riwayat_harga_bloc.dart`
 - **Date**: 2026-06-05
+
+### Bug: Cashier — bayarCtrl pre-fill, barcode scan, Cetak Struk dialog, Ctrl+F focus
+- **Root cause**: (1) bayarCtrl diisi `data.totalSetelahDiskon` saat dialog bayar terbuka — harus kosong. (2) `onSubmitted` field search menggunakan `_products` cached yang mungkin stale karena async search — barcode scanner kirim data + Enter, produk tidak ketemu. (3) `CashierSuccess` handler langsung `Navigator.push(ShareReceiptPage)` tanpa dialog cetak struk. (4) Tidak ada keyboard shortcut handler sama sekali untuk Ctrl+F.
+- **Fix**: (1) bayarCtrl mulai kosong + `localBayar = 0`. (2) `onSubmitted` panggil `ProdukRepository.getProdukByBarcode()` langsung (bypass cache), auto-clear field setelah add. (3) `CashierSuccess` ganti dengan dialog "Cetak Struk?" → Ya/Tidak. Ya → `printReceipt()` (drawer include), Tidak → `openCashDrawer()`. Jika printer tidak terdeteksi, skip dialog + tetap coba `openCashDrawer()` via try-catch. (4) Tambah `FocusNode` + `CallbackShortcuts` binding `Ctrl+F → requestFocus`.
+- **Files**: `lib/presentation/pages/shared/cashier_page.dart`
+- **Date**: 2026-06-19
+
+### Bug: Print — drawer command tidak ada di WindowsUsbPrinterService
+- **Root cause**: Saat `WindowsUsbPrinterService` dibuat (fork dari tokodedy), baris `add([0x1B, 0x70, 0x00, 0x19, 0xFA])` dari `bluetooth_printer_service.dart:345` tidak dicopy. Juga method `openCashDrawer()` tidak ada di interface `PrinterService`.
+- **Fix**: Tambah `generator.drawer()` setelah `generator.cut()` di `_generateEscPos`. Tambah method `openCashDrawer()` di `PrinterService` + implementasi di `WindowsUsbPrinterService`. Tambah tombol manual "Buka Laci" di baris status printer cashier page.
+- **Files**: `lib/data/services/printer_service.dart`, `lib/data/services/windows_usb_printer_service.dart`, `lib/presentation/pages/shared/cashier_page.dart`
+- **Date**: 2026-06-19
