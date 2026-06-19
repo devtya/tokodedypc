@@ -125,7 +125,7 @@ Gunakan notasi berikut untuk menyebut huruf versi yang ingin dinaikkan:
 - **y** — Minor (fitur baru, reset z ke 0)
 - **z** — Patch (bug fix / perbaikan kecil)
 
-Current: **1.0.7** (tag: v1.0.7)
+Current: **1.0.10** (tag: v1.0.10)
 
 ## Log Konvensi
 
@@ -544,4 +544,10 @@ Current: **1.0.7** (tag: v1.0.7)
 - **Root cause**: Saat `WindowsUsbPrinterService` dibuat (fork dari tokodedy), baris `add([0x1B, 0x70, 0x00, 0x19, 0xFA])` dari `bluetooth_printer_service.dart:345` tidak dicopy. Juga method `openCashDrawer()` tidak ada di interface `PrinterService`.
 - **Fix**: Tambah `generator.drawer()` setelah `generator.cut()` di `_generateEscPos`. Tambah method `openCashDrawer()` di `PrinterService` + implementasi di `WindowsUsbPrinterService`. Tambah tombol manual "Buka Laci" di baris status printer cashier page.
 - **Files**: `lib/data/services/printer_service.dart`, `lib/data/services/windows_usb_printer_service.dart`, `lib/presentation/pages/shared/cashier_page.dart`
+- **Date**: 2026-06-19
+
+### Bug: Item Belanja Print — Kolom angka tidak rata kanan di 80mm
+- **Root cause**: `PosColumn.width` kolom kanan (angka subtotal) di baris item belanja hardcoded `width: 5` (dari total 12), sedangkan baris Subtotal/Total menggunakan `width: 6`. Pada kertas 80mm, selisih 1 unit width (~4 karakter) membuat angka tidak bisa mentok ke kanan sejajar dengan baris Total.
+- **Fix**: Ganti hardcoded 7:5 jadi rasio dinamis — `is80mm ? 6:6 : 7:5` — sehingga di 80mm kolom angka mendapat porsi 6/12 sama dengan baris Total, sementara di 58mm tetap 7:5 (tidak regresi).
+- **Files**: `lib/data/services/windows_usb_printer_service.dart`
 - **Date**: 2026-06-19

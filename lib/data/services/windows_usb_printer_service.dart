@@ -42,6 +42,10 @@ class WindowsUsbPrinterService implements PrinterService {
     bytes += generator.hr();
 
     // Items
+    final is80mm = data.lebarKertas == 80;
+    final kiri = is80mm ? 6 : 7;
+    final kanan = is80mm ? 6 : 5;
+
     for (final item in data.items) {
       String qtyStr = '${item.jumlah} ${item.satuan ?? ''}';
       if (item.konversi != null && item.konversi! > 1) {
@@ -54,11 +58,11 @@ class WindowsUsbPrinterService implements PrinterService {
       bytes += generator.row([
         PosColumn(
             text: '$qtyStr x ${_formatRp(item.harga)}',
-            width: 7,
+            width: kiri,
             styles: const PosStyles(align: PosAlign.left)),
         PosColumn(
             text: _formatRp(sub),
-            width: 5,
+            width: kanan,
             styles: const PosStyles(align: PosAlign.right)),
       ]);
       
