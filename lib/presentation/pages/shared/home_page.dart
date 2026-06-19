@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../i18n/strings.g.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/constants/app_constants.dart';
 import 'login_page.dart';
 import '../../../domain/entities/user.dart';
 import '../../../domain/repositories/auth_repository.dart';
@@ -85,18 +86,18 @@ enum _NavSection {
 extension _NavSectionExt on _NavSection {
   String get label {
     switch (this) {
-      case _NavSection.dashboard: return 'Dashboard';
-      case _NavSection.kasir: return 'Kasir';
-      case _NavSection.produk: return 'Produk';
-      case _NavSection.transaksi: return 'Riwayat Transaksi';
-      case _NavSection.laporan: return 'Laporan';
-      case _NavSection.pembelian: return 'Pembelian';
-      case _NavSection.purchaseOrder: return 'Purchase Order';
-      case _NavSection.supplier: return 'Supplier';
-      case _NavSection.hutang: return 'Hutang';
-      case _NavSection.onlineOrder: return 'Online Order';
-      case _NavSection.pengguna: return 'Pengguna';
-      case _NavSection.pengaturan: return 'Pengaturan';
+      case _NavSection.dashboard: return t.navigation.dashboard;
+      case _NavSection.kasir: return t.navigation.kasir;
+      case _NavSection.produk: return t.navigation.produk;
+      case _NavSection.transaksi: return t.navigation.transaksi;
+      case _NavSection.laporan: return t.navigation.laporan;
+      case _NavSection.pembelian: return t.navigation.pembelian;
+      case _NavSection.purchaseOrder: return t.navigation.purchase_order;
+      case _NavSection.supplier: return t.navigation.supplier;
+      case _NavSection.hutang: return t.navigation.hutang;
+      case _NavSection.onlineOrder: return t.navigation.online_order;
+      case _NavSection.pengguna: return t.navigation.pengguna;
+      case _NavSection.pengaturan: return t.navigation.pengaturan;
     }
   }
 
@@ -119,18 +120,18 @@ extension _NavSectionExt on _NavSection {
 
   Color get color {
     switch (this) {
-      case _NavSection.dashboard: return AppTheme.primaryGreen;
-      case _NavSection.kasir: return AppTheme.primaryGreen;
-      case _NavSection.produk: return Colors.blue;
-      case _NavSection.transaksi: return Colors.teal;
-      case _NavSection.laporan: return Colors.purple;
-      case _NavSection.pembelian: return Colors.teal;
-      case _NavSection.purchaseOrder: return Colors.orange;
-      case _NavSection.supplier: return Colors.brown;
-      case _NavSection.hutang: return AppTheme.warningOrange;
-      case _NavSection.onlineOrder: return Colors.indigo;
-      case _NavSection.pengguna: return Colors.brown;
-      case _NavSection.pengaturan: return Colors.grey;
+      case _NavSection.dashboard: return AppTheme.navDashboard;
+      case _NavSection.kasir: return AppTheme.navKasir;
+      case _NavSection.produk: return AppTheme.navProduk;
+      case _NavSection.transaksi: return AppTheme.navTransaksi;
+      case _NavSection.laporan: return AppTheme.navLaporan;
+      case _NavSection.pembelian: return AppTheme.navPembelian;
+      case _NavSection.purchaseOrder: return AppTheme.navPurchaseOrder;
+      case _NavSection.supplier: return AppTheme.navSupplier;
+      case _NavSection.hutang: return AppTheme.navHutang;
+      case _NavSection.onlineOrder: return AppTheme.navOnlineOrder;
+      case _NavSection.pengguna: return AppTheme.navPengguna;
+      case _NavSection.pengaturan: return AppTheme.navPengaturan;
     }
   }
 }
@@ -168,22 +169,21 @@ class _HomeDesktopShellState extends State<_HomeDesktopShell> {
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Lengkapi Email'),
+        title: Text(t.dialog.email_title),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Anda login menggunakan username. Silakan isi email '
-              'untuk keamanan akun dan fitur lupa password.',
-              style: TextStyle(fontSize: 14),
+            Text(
+              t.dialog.email_subtitle,
+              style: const TextStyle(fontSize: 14),
             ),
             const SizedBox(height: 16),
             TextField(
               controller: emailCtrl,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.email),
+              decoration: InputDecoration(
+                labelText: t.dialog.email_label,
+                prefixIcon: const Icon(Icons.email),
               ),
               keyboardType: TextInputType.emailAddress,
             ),
@@ -192,20 +192,20 @@ class _HomeDesktopShellState extends State<_HomeDesktopShell> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Nanti'),
+            child: Text(t.dialog.btn_nanti),
           ),
           ElevatedButton(
             onPressed: () async {
               final email = emailCtrl.text.trim();
               if (email.isEmpty) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('Email tidak boleh kosong')),
+                  SnackBar(content: Text(t.dialog.email_empty)),
                 );
                 return;
               }
               if (!RegExp(r'^[^\@\s]+@[^\@\s]+\.[^\@\s]+$').hasMatch(email)) {
                 ScaffoldMessenger.of(ctx).showSnackBar(
-                  const SnackBar(content: Text('Format email tidak valid')),
+                  SnackBar(content: Text(t.dialog.email_invalid)),
                 );
                 return;
               }
@@ -220,12 +220,12 @@ class _HomeDesktopShellState extends State<_HomeDesktopShell> {
               } catch (e) {
                 if (ctx.mounted) {
                   ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text('Gagal menyimpan: $e')),
+                    SnackBar(content: Text(t.dialog.save_failed(error: e.toString()))),
                   );
                 }
               }
             },
-            child: const Text('Simpan'),
+            child: Text(t.dialog.btn_simpan),
           ),
         ],
       ),
@@ -403,7 +403,7 @@ class _Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF111827) : const Color(0xFF0f172a);
+    final bg = isDark ? AppTheme.sidebarBackgroundDark : AppTheme.sidebarBackgroundLight;
 
 
     // Menu groups
@@ -434,10 +434,10 @@ class _Sidebar extends StatelessWidget {
                 ),
                 if (!collapsed) ...[
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Tokodedy PC',
-                      style: TextStyle(
+                      AppConstants.appName,
+                      style: const TextStyle(
                         color: Colors.white,
                         fontWeight: FontWeight.w700,
                         fontSize: 16,
@@ -461,7 +461,7 @@ class _Sidebar extends StatelessWidget {
             ),
           ),
 
-          const Divider(color: Colors.white12, height: 1),
+          const Divider(color: AppTheme.white06, height: 1),
           const SizedBox(height: 8),
 
           // Nav Items
@@ -471,29 +471,30 @@ class _Sidebar extends StatelessWidget {
               children: [
                 _SidebarItem(section: _NavSection.dashboard, active: activeSection == _NavSection.dashboard, collapsed: collapsed, onTap: () => onNavigate(_NavSection.dashboard)),
                 const SizedBox(height: 4),
-                if (!collapsed) _SidebarLabel('KASIR'),
-                ...kasirItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))),
+                if (!collapsed) _SidebarLabel(t.navigation.group_kasir),
+                 kasirItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))).toList().first,
+                 kasirItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))).toList().last,
                 const SizedBox(height: 4),
-                if (!collapsed) _SidebarLabel('STOK & PEMBELIAN'),
+                if (!collapsed) _SidebarLabel(t.navigation.group_stok),
                 ...stokItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))),
                 if (isAdmin) ...[
                   const SizedBox(height: 4),
-                  if (!collapsed) _SidebarLabel('KEUANGAN'),
+                  if (!collapsed) _SidebarLabel(t.navigation.group_keuangan),
                   ...keuanganItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))),
                 ],
                 const SizedBox(height: 4),
-                if (!collapsed) _SidebarLabel('ONLINE'),
+                if (!collapsed) _SidebarLabel(t.navigation.group_online),
                 ...onlineItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))),
                 if (adminItems.isNotEmpty) ...[
                   const SizedBox(height: 4),
-                  if (!collapsed) _SidebarLabel('ADMIN'),
+                  if (!collapsed) _SidebarLabel(t.navigation.group_admin),
                   ...adminItems.map((s) => _SidebarItem(section: s, active: activeSection == s, collapsed: collapsed, onTap: () => onNavigate(s))),
                 ],
               ],
             ),
           ),
 
-          const Divider(color: Colors.white12, height: 1),
+          const Divider(color: AppTheme.white06, height: 1),
 
           // Settings + User
           Padding(

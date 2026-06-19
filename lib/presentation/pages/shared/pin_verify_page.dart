@@ -115,6 +115,7 @@ class _PinVerifyPageState extends State<PinVerifyPage> {
                     const SizedBox(height: 32),
                     TextField(
                       controller: _pinController,
+                      autofocus: true,
                       focusNode: _pinFocusNode,
                       obscureText: true,
                       maxLength: 6,

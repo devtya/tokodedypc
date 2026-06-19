@@ -39,5 +39,35 @@
   "price_update": {
     "title": "Update Harga Barang",
     "product_deleted": "Produk Dihapus"
+  },
+  "navigation": {
+    "dashboard": "Dashboard",
+    "kasir": "Kasir",
+    "produk": "Produk",
+    "transaksi": "Riwayat Transaksi",
+    "laporan": "Laporan",
+    "pembelian": "Pembelian",
+    "purchase_order": "Purchase Order",
+    "supplier": "Supplier",
+    "hutang": "Hutang",
+    "online_order": "Online Order",
+    "pengguna": "Pengguna",
+    "pengaturan": "Pengaturan",
+    "group_kasir": "KASIR",
+    "group_stok": "STOK & PEMBELIAN",
+    "group_keuangan": "KEUANGAN",
+    "group_online": "ONLINE",
+    "group_admin": "ADMIN",
+    "group_pengaturan": "PENGATURAN"
+  },
+  "dialog": {
+    "email_title": "Lengkapi Email",
+    "email_subtitle": "Anda login menggunakan username. Silakan isi email untuk keamanan akun dan fitur lupa password.",
+    "email_label": "Email",
+    "btn_nanti": "Nanti",
+    "btn_simpan": "Simpan",
+    "email_empty": "Email tidak boleh kosong",
+    "email_invalid": "Format email tidak valid",
+    "save_failed": "Gagal menyimpan: {error}"
   }
 }

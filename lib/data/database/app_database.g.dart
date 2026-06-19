@@ -9387,6 +9387,17 @@ class $PendingSyncQueueTableTable extends PendingSyncQueueTable
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _lastErrorMeta = const VerificationMeta(
+    'lastError',
+  );
+  @override
+  late final GeneratedColumn<String> lastError = GeneratedColumn<String>(
+    'last_error',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -9406,6 +9417,7 @@ class $PendingSyncQueueTableTable extends PendingSyncQueueTable
     operation,
     recordId,
     payload,
+    lastError,
     createdAt,
   ];
   @override
@@ -9458,6 +9470,12 @@ class $PendingSyncQueueTableTable extends PendingSyncQueueTable
     } else if (isInserting) {
       context.missing(_payloadMeta);
     }
+    if (data.containsKey('last_error')) {
+      context.handle(
+        _lastErrorMeta,
+        lastError.isAcceptableOrUnknown(data['last_error']!, _lastErrorMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -9496,6 +9514,10 @@ class $PendingSyncQueueTableTable extends PendingSyncQueueTable
         DriftSqlType.string,
         data['${effectivePrefix}payload'],
       )!,
+      lastError: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}last_error'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -9516,6 +9538,7 @@ class PendingSyncQueueTableData extends DataClass
   final String operation;
   final String recordId;
   final String payload;
+  final String? lastError;
   final DateTime createdAt;
   const PendingSyncQueueTableData({
     required this.id,
@@ -9523,6 +9546,7 @@ class PendingSyncQueueTableData extends DataClass
     required this.operation,
     required this.recordId,
     required this.payload,
+    this.lastError,
     required this.createdAt,
   });
   @override
@@ -9533,6 +9557,9 @@ class PendingSyncQueueTableData extends DataClass
     map['operation'] = Variable<String>(operation);
     map['record_id'] = Variable<String>(recordId);
     map['payload'] = Variable<String>(payload);
+    if (!nullToAbsent || lastError != null) {
+      map['last_error'] = Variable<String>(lastError);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -9544,6 +9571,9 @@ class PendingSyncQueueTableData extends DataClass
       operation: Value(operation),
       recordId: Value(recordId),
       payload: Value(payload),
+      lastError: lastError == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lastError),
       createdAt: Value(createdAt),
     );
   }
@@ -9559,6 +9589,7 @@ class PendingSyncQueueTableData extends DataClass
       operation: serializer.fromJson<String>(json['operation']),
       recordId: serializer.fromJson<String>(json['recordId']),
       payload: serializer.fromJson<String>(json['payload']),
+      lastError: serializer.fromJson<String?>(json['lastError']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -9571,6 +9602,7 @@ class PendingSyncQueueTableData extends DataClass
       'operation': serializer.toJson<String>(operation),
       'recordId': serializer.toJson<String>(recordId),
       'payload': serializer.toJson<String>(payload),
+      'lastError': serializer.toJson<String?>(lastError),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -9581,6 +9613,7 @@ class PendingSyncQueueTableData extends DataClass
     String? operation,
     String? recordId,
     String? payload,
+    Value<String?> lastError = const Value.absent(),
     DateTime? createdAt,
   }) => PendingSyncQueueTableData(
     id: id ?? this.id,
@@ -9588,6 +9621,7 @@ class PendingSyncQueueTableData extends DataClass
     operation: operation ?? this.operation,
     recordId: recordId ?? this.recordId,
     payload: payload ?? this.payload,
+    lastError: lastError.present ? lastError.value : this.lastError,
     createdAt: createdAt ?? this.createdAt,
   );
   PendingSyncQueueTableData copyWithCompanion(
@@ -9601,6 +9635,7 @@ class PendingSyncQueueTableData extends DataClass
       operation: data.operation.present ? data.operation.value : this.operation,
       recordId: data.recordId.present ? data.recordId.value : this.recordId,
       payload: data.payload.present ? data.payload.value : this.payload,
+      lastError: data.lastError.present ? data.lastError.value : this.lastError,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -9613,14 +9648,22 @@ class PendingSyncQueueTableData extends DataClass
           ..write('operation: $operation, ')
           ..write('recordId: $recordId, ')
           ..write('payload: $payload, ')
+          ..write('lastError: $lastError, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode =>
-      Object.hash(id, targetTable, operation, recordId, payload, createdAt);
+  int get hashCode => Object.hash(
+    id,
+    targetTable,
+    operation,
+    recordId,
+    payload,
+    lastError,
+    createdAt,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -9630,6 +9673,7 @@ class PendingSyncQueueTableData extends DataClass
           other.operation == this.operation &&
           other.recordId == this.recordId &&
           other.payload == this.payload &&
+          other.lastError == this.lastError &&
           other.createdAt == this.createdAt);
 }
 
@@ -9640,6 +9684,7 @@ class PendingSyncQueueTableCompanion
   final Value<String> operation;
   final Value<String> recordId;
   final Value<String> payload;
+  final Value<String?> lastError;
   final Value<DateTime> createdAt;
   const PendingSyncQueueTableCompanion({
     this.id = const Value.absent(),
@@ -9647,6 +9692,7 @@ class PendingSyncQueueTableCompanion
     this.operation = const Value.absent(),
     this.recordId = const Value.absent(),
     this.payload = const Value.absent(),
+    this.lastError = const Value.absent(),
     this.createdAt = const Value.absent(),
   });
   PendingSyncQueueTableCompanion.insert({
@@ -9655,6 +9701,7 @@ class PendingSyncQueueTableCompanion
     required String operation,
     required String recordId,
     required String payload,
+    this.lastError = const Value.absent(),
     this.createdAt = const Value.absent(),
   }) : targetTable = Value(targetTable),
        operation = Value(operation),
@@ -9666,6 +9713,7 @@ class PendingSyncQueueTableCompanion
     Expression<String>? operation,
     Expression<String>? recordId,
     Expression<String>? payload,
+    Expression<String>? lastError,
     Expression<DateTime>? createdAt,
   }) {
     return RawValuesInsertable({
@@ -9674,6 +9722,7 @@ class PendingSyncQueueTableCompanion
       if (operation != null) 'operation': operation,
       if (recordId != null) 'record_id': recordId,
       if (payload != null) 'payload': payload,
+      if (lastError != null) 'last_error': lastError,
       if (createdAt != null) 'created_at': createdAt,
     });
   }
@@ -9684,6 +9733,7 @@ class PendingSyncQueueTableCompanion
     Value<String>? operation,
     Value<String>? recordId,
     Value<String>? payload,
+    Value<String?>? lastError,
     Value<DateTime>? createdAt,
   }) {
     return PendingSyncQueueTableCompanion(
@@ -9692,6 +9742,7 @@ class PendingSyncQueueTableCompanion
       operation: operation ?? this.operation,
       recordId: recordId ?? this.recordId,
       payload: payload ?? this.payload,
+      lastError: lastError ?? this.lastError,
       createdAt: createdAt ?? this.createdAt,
     );
   }
@@ -9714,6 +9765,9 @@ class PendingSyncQueueTableCompanion
     if (payload.present) {
       map['payload'] = Variable<String>(payload.value);
     }
+    if (lastError.present) {
+      map['last_error'] = Variable<String>(lastError.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -9728,6 +9782,7 @@ class PendingSyncQueueTableCompanion
           ..write('operation: $operation, ')
           ..write('recordId: $recordId, ')
           ..write('payload: $payload, ')
+          ..write('lastError: $lastError, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -17543,6 +17598,7 @@ typedef $$PendingSyncQueueTableTableCreateCompanionBuilder =
       required String operation,
       required String recordId,
       required String payload,
+      Value<String?> lastError,
       Value<DateTime> createdAt,
     });
 typedef $$PendingSyncQueueTableTableUpdateCompanionBuilder =
@@ -17552,6 +17608,7 @@ typedef $$PendingSyncQueueTableTableUpdateCompanionBuilder =
       Value<String> operation,
       Value<String> recordId,
       Value<String> payload,
+      Value<String?> lastError,
       Value<DateTime> createdAt,
     });
 
@@ -17586,6 +17643,11 @@ class $$PendingSyncQueueTableTableFilterComposer
 
   ColumnFilters<String> get payload => $composableBuilder(
     column: $table.payload,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lastError => $composableBuilder(
+    column: $table.lastError,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -17629,6 +17691,11 @@ class $$PendingSyncQueueTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get lastError => $composableBuilder(
+    column: $table.lastError,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -17660,6 +17727,9 @@ class $$PendingSyncQueueTableTableAnnotationComposer
 
   GeneratedColumn<String> get payload =>
       $composableBuilder(column: $table.payload, builder: (column) => column);
+
+  GeneratedColumn<String> get lastError =>
+      $composableBuilder(column: $table.lastError, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -17716,6 +17786,7 @@ class $$PendingSyncQueueTableTableTableManager
                 Value<String> operation = const Value.absent(),
                 Value<String> recordId = const Value.absent(),
                 Value<String> payload = const Value.absent(),
+                Value<String?> lastError = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => PendingSyncQueueTableCompanion(
                 id: id,
@@ -17723,6 +17794,7 @@ class $$PendingSyncQueueTableTableTableManager
                 operation: operation,
                 recordId: recordId,
                 payload: payload,
+                lastError: lastError,
                 createdAt: createdAt,
               ),
           createCompanionCallback:
@@ -17732,6 +17804,7 @@ class $$PendingSyncQueueTableTableTableManager
                 required String operation,
                 required String recordId,
                 required String payload,
+                Value<String?> lastError = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
               }) => PendingSyncQueueTableCompanion.insert(
                 id: id,
@@ -17739,6 +17812,7 @@ class $$PendingSyncQueueTableTableTableManager
                 operation: operation,
                 recordId: recordId,
                 payload: payload,
+                lastError: lastError,
                 createdAt: createdAt,
               ),
           withReferenceMapper: (p0) => p0

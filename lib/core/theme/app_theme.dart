@@ -68,6 +68,24 @@ class AppTheme {
   static const Color warningOrange = warning;
   static const Color neutralGrey = grey;
 
+  // ── SIDEBAR PALETTE ────────────────────────────────────────────────
+  static const Color sidebarBackgroundDark = Color(0xFF111827);  // Gray 900
+  static const Color sidebarBackgroundLight = Color(0xFF0F172A); // Slate 900
+
+  // ── SEMANTIC NAVIGATION COLORS ─────────────────────────────────────
+  static const Color navDashboard = primary;
+  static const Color navKasir = primary;
+  static const Color navProduk = Color(0xFF3498DB);      // Info (Biru)
+  static const Color navTransaksi = Color(0xFF009688);   // Teal
+  static const Color navLaporan = Color(0xFF9C27B0);     // Purple
+  static const Color navPembelian = Color(0xFF009688);   // Teal
+  static const Color navPurchaseOrder = Color(0xFFFF9800); // Warning (Orange)
+  static const Color navSupplier = Color(0xFF795548);    // Brown
+  static const Color navHutang = Color(0xFFFF9800);       // Warning (Orange)
+  static const Color navOnlineOrder = Color(0xFF3F51B5);  // Indigo
+  static const Color navPengguna = Color(0xFF795548);     // Brown
+  static const Color navPengaturan = Color(0xFF6B7A70);   // Neutral Grey
+
   // ── Border Radii (DedyStore System) ──────────────────────────────
   static const double radiusSm = 7;
   static const double radiusMd = 10;
