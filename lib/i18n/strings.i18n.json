@@ -69,5 +69,73 @@
     "email_empty": "Email tidak boleh kosong",
     "email_invalid": "Format email tidak valid",
     "save_failed": "Gagal menyimpan"
+  },
+  "cashier": {
+    "search_hint": "Cari atau scan produk... (Ctrl+F)",
+    "printer_connected": "Printer terhubung",
+    "printer_disconnected": "Printer tidak terhubung",
+    "printer_settings": "Pengaturan",
+    "cart_title": "Keranjang",
+    "cart_empty": "Keranjang kosong",
+    "cart_empty_hint": "Cari atau scan produk di panel kiri",
+    "btn_clear": "Kosongkan",
+    "btn_pending": "Pending",
+    "btn_debt": "Catat Hutang",
+    "btn_pay": "Bayar Sekarang",
+    "btn_processing": "Memproses...",
+    "btn_save": "Simpan",
+    "btn_cancel": "Batal",
+    "discount_item": "Diskon Item:",
+    "discount_global_label": "Diskon Global:",
+    "total": "Total",
+    "product_not_found": "Produk tidak ditemukan",
+    "dialog_payment": {
+      "title": "Konfirmasi Pembayaran",
+      "printer_ok": "Printer Terhubung",
+      "printer_err": "Printer Tidak Terhubung",
+      "pay_amount": "Jumlah Bayar",
+      "exact_money": "Uang Pas",
+      "change": "Kembalian:",
+      "lack": "Kurang:",
+      "btn_process": "Proses Bayar"
+    },
+    "dialog_printer": {
+      "title": "Printer Thermal",
+      "connected": "Terhubung",
+      "disconnected": "Tidak terhubung",
+      "desc": "Printer menggunakan koneksi Network (HTTP) ke print_server.py.",
+      "settings": "Pengaturan Printer",
+      "close": "Tutup"
+    },
+    "dialog_discount": {
+      "title": "Diskon -",
+      "global_title": "Diskon Global",
+      "no_discount": "Tidak",
+      "percent": "Persen (%)",
+      "nominal": "Nominal (Rp)",
+      "hint_percent": "10",
+      "hint_nominal": "5000"
+    },
+    "dialog_qty": {
+      "title": "Jumlah Barang",
+      "title_edit": "Ubah Jumlah -",
+      "qty_label": "Jumlah",
+      "qty_hint": "Masukkan jumlah barang",
+      "btn_add": "Tambah"
+    },
+    "dialog_debt": {
+      "title": "Bayar Hutang",
+      "customer_name": "Nama Pelanggan",
+      "customer_hint": "Masukkan nama pelanggan"
+    },
+    "dialog_pending": {
+      "title": "Simpan Pending",
+      "customer_required": "Nama Pelanggan *",
+      "notes": "Catatan",
+      "saved_success": "Pending disimpan untuk"
+    },
+    "dialog_unit": {
+      "title": "Pilih Satuan -"
+    }
   }
 }

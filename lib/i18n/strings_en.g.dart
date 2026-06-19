@@ -53,6 +53,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$price_update$en price_update = Translations$price_update$en._(_root);
 	late final Translations$navigation$en navigation = Translations$navigation$en._(_root);
 	late final Translations$dialog$en dialog = Translations$dialog$en._(_root);
+	late final Translations$cashier$en cashier = Translations$cashier$en._(_root);
 }
 
 // Path: login
@@ -292,6 +293,242 @@ class Translations$dialog$en {
 	String get save_failed => 'Gagal menyimpan';
 }
 
+// Path: cashier
+class Translations$cashier$en {
+	Translations$cashier$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Cari atau scan produk... (Ctrl+F)'
+	String get search_hint => 'Cari atau scan produk... (Ctrl+F)';
+
+	/// en: 'Printer terhubung'
+	String get printer_connected => 'Printer terhubung';
+
+	/// en: 'Printer tidak terhubung'
+	String get printer_disconnected => 'Printer tidak terhubung';
+
+	/// en: 'Pengaturan'
+	String get printer_settings => 'Pengaturan';
+
+	/// en: 'Keranjang'
+	String get cart_title => 'Keranjang';
+
+	/// en: 'Keranjang kosong'
+	String get cart_empty => 'Keranjang kosong';
+
+	/// en: 'Cari atau scan produk di panel kiri'
+	String get cart_empty_hint => 'Cari atau scan produk di panel kiri';
+
+	/// en: 'Kosongkan'
+	String get btn_clear => 'Kosongkan';
+
+	/// en: 'Pending'
+	String get btn_pending => 'Pending';
+
+	/// en: 'Catat Hutang'
+	String get btn_debt => 'Catat Hutang';
+
+	/// en: 'Bayar Sekarang'
+	String get btn_pay => 'Bayar Sekarang';
+
+	/// en: 'Memproses...'
+	String get btn_processing => 'Memproses...';
+
+	/// en: 'Simpan'
+	String get btn_save => 'Simpan';
+
+	/// en: 'Batal'
+	String get btn_cancel => 'Batal';
+
+	/// en: 'Diskon Item:'
+	String get discount_item => 'Diskon Item:';
+
+	/// en: 'Diskon Global:'
+	String get discount_global_label => 'Diskon Global:';
+
+	/// en: 'Total'
+	String get total => 'Total';
+
+	/// en: 'Produk tidak ditemukan'
+	String get product_not_found => 'Produk tidak ditemukan';
+
+	late final Translations$cashier$dialog_payment$en dialog_payment = Translations$cashier$dialog_payment$en._(_root);
+	late final Translations$cashier$dialog_printer$en dialog_printer = Translations$cashier$dialog_printer$en._(_root);
+	late final Translations$cashier$dialog_discount$en dialog_discount = Translations$cashier$dialog_discount$en._(_root);
+	late final Translations$cashier$dialog_qty$en dialog_qty = Translations$cashier$dialog_qty$en._(_root);
+	late final Translations$cashier$dialog_debt$en dialog_debt = Translations$cashier$dialog_debt$en._(_root);
+	late final Translations$cashier$dialog_pending$en dialog_pending = Translations$cashier$dialog_pending$en._(_root);
+	late final Translations$cashier$dialog_unit$en dialog_unit = Translations$cashier$dialog_unit$en._(_root);
+}
+
+// Path: cashier.dialog_payment
+class Translations$cashier$dialog_payment$en {
+	Translations$cashier$dialog_payment$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Konfirmasi Pembayaran'
+	String get title => 'Konfirmasi Pembayaran';
+
+	/// en: 'Printer Terhubung'
+	String get printer_ok => 'Printer Terhubung';
+
+	/// en: 'Printer Tidak Terhubung'
+	String get printer_err => 'Printer Tidak Terhubung';
+
+	/// en: 'Jumlah Bayar'
+	String get pay_amount => 'Jumlah Bayar';
+
+	/// en: 'Uang Pas'
+	String get exact_money => 'Uang Pas';
+
+	/// en: 'Kembalian:'
+	String get change => 'Kembalian:';
+
+	/// en: 'Kurang:'
+	String get lack => 'Kurang:';
+
+	/// en: 'Proses Bayar'
+	String get btn_process => 'Proses Bayar';
+}
+
+// Path: cashier.dialog_printer
+class Translations$cashier$dialog_printer$en {
+	Translations$cashier$dialog_printer$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Printer Thermal'
+	String get title => 'Printer Thermal';
+
+	/// en: 'Terhubung'
+	String get connected => 'Terhubung';
+
+	/// en: 'Tidak terhubung'
+	String get disconnected => 'Tidak terhubung';
+
+	/// en: 'Printer menggunakan koneksi Network (HTTP) ke print_server.py.'
+	String get desc => 'Printer menggunakan koneksi Network (HTTP) ke print_server.py.';
+
+	/// en: 'Pengaturan Printer'
+	String get settings => 'Pengaturan Printer';
+
+	/// en: 'Tutup'
+	String get close => 'Tutup';
+}
+
+// Path: cashier.dialog_discount
+class Translations$cashier$dialog_discount$en {
+	Translations$cashier$dialog_discount$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Diskon -'
+	String get title => 'Diskon -';
+
+	/// en: 'Diskon Global'
+	String get global_title => 'Diskon Global';
+
+	/// en: 'Tidak'
+	String get no_discount => 'Tidak';
+
+	/// en: 'Persen (%)'
+	String get percent => 'Persen (%)';
+
+	/// en: 'Nominal (Rp)'
+	String get nominal => 'Nominal (Rp)';
+
+	/// en: '10'
+	String get hint_percent => '10';
+
+	/// en: '5000'
+	String get hint_nominal => '5000';
+}
+
+// Path: cashier.dialog_qty
+class Translations$cashier$dialog_qty$en {
+	Translations$cashier$dialog_qty$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Jumlah Barang'
+	String get title => 'Jumlah Barang';
+
+	/// en: 'Ubah Jumlah -'
+	String get title_edit => 'Ubah Jumlah -';
+
+	/// en: 'Jumlah'
+	String get qty_label => 'Jumlah';
+
+	/// en: 'Masukkan jumlah barang'
+	String get qty_hint => 'Masukkan jumlah barang';
+
+	/// en: 'Tambah'
+	String get btn_add => 'Tambah';
+}
+
+// Path: cashier.dialog_debt
+class Translations$cashier$dialog_debt$en {
+	Translations$cashier$dialog_debt$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Bayar Hutang'
+	String get title => 'Bayar Hutang';
+
+	/// en: 'Nama Pelanggan'
+	String get customer_name => 'Nama Pelanggan';
+
+	/// en: 'Masukkan nama pelanggan'
+	String get customer_hint => 'Masukkan nama pelanggan';
+}
+
+// Path: cashier.dialog_pending
+class Translations$cashier$dialog_pending$en {
+	Translations$cashier$dialog_pending$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Simpan Pending'
+	String get title => 'Simpan Pending';
+
+	/// en: 'Nama Pelanggan *'
+	String get customer_required => 'Nama Pelanggan *';
+
+	/// en: 'Catatan'
+	String get notes => 'Catatan';
+
+	/// en: 'Pending disimpan untuk'
+	String get saved_success => 'Pending disimpan untuk';
+}
+
+// Path: cashier.dialog_unit
+class Translations$cashier$dialog_unit$en {
+	Translations$cashier$dialog_unit$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Pilih Satuan -'
+	String get title => 'Pilih Satuan -';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -353,6 +590,58 @@ extension on Translations {
 			'dialog.email_empty' => 'Email tidak boleh kosong',
 			'dialog.email_invalid' => 'Format email tidak valid',
 			'dialog.save_failed' => 'Gagal menyimpan',
+			'cashier.search_hint' => 'Cari atau scan produk... (Ctrl+F)',
+			'cashier.printer_connected' => 'Printer terhubung',
+			'cashier.printer_disconnected' => 'Printer tidak terhubung',
+			'cashier.printer_settings' => 'Pengaturan',
+			'cashier.cart_title' => 'Keranjang',
+			'cashier.cart_empty' => 'Keranjang kosong',
+			'cashier.cart_empty_hint' => 'Cari atau scan produk di panel kiri',
+			'cashier.btn_clear' => 'Kosongkan',
+			'cashier.btn_pending' => 'Pending',
+			'cashier.btn_debt' => 'Catat Hutang',
+			'cashier.btn_pay' => 'Bayar Sekarang',
+			'cashier.btn_processing' => 'Memproses...',
+			'cashier.btn_save' => 'Simpan',
+			'cashier.btn_cancel' => 'Batal',
+			'cashier.discount_item' => 'Diskon Item:',
+			'cashier.discount_global_label' => 'Diskon Global:',
+			'cashier.total' => 'Total',
+			'cashier.product_not_found' => 'Produk tidak ditemukan',
+			'cashier.dialog_payment.title' => 'Konfirmasi Pembayaran',
+			'cashier.dialog_payment.printer_ok' => 'Printer Terhubung',
+			'cashier.dialog_payment.printer_err' => 'Printer Tidak Terhubung',
+			'cashier.dialog_payment.pay_amount' => 'Jumlah Bayar',
+			'cashier.dialog_payment.exact_money' => 'Uang Pas',
+			'cashier.dialog_payment.change' => 'Kembalian:',
+			'cashier.dialog_payment.lack' => 'Kurang:',
+			'cashier.dialog_payment.btn_process' => 'Proses Bayar',
+			'cashier.dialog_printer.title' => 'Printer Thermal',
+			'cashier.dialog_printer.connected' => 'Terhubung',
+			'cashier.dialog_printer.disconnected' => 'Tidak terhubung',
+			'cashier.dialog_printer.desc' => 'Printer menggunakan koneksi Network (HTTP) ke print_server.py.',
+			'cashier.dialog_printer.settings' => 'Pengaturan Printer',
+			'cashier.dialog_printer.close' => 'Tutup',
+			'cashier.dialog_discount.title' => 'Diskon -',
+			'cashier.dialog_discount.global_title' => 'Diskon Global',
+			'cashier.dialog_discount.no_discount' => 'Tidak',
+			'cashier.dialog_discount.percent' => 'Persen (%)',
+			'cashier.dialog_discount.nominal' => 'Nominal (Rp)',
+			'cashier.dialog_discount.hint_percent' => '10',
+			'cashier.dialog_discount.hint_nominal' => '5000',
+			'cashier.dialog_qty.title' => 'Jumlah Barang',
+			'cashier.dialog_qty.title_edit' => 'Ubah Jumlah -',
+			'cashier.dialog_qty.qty_label' => 'Jumlah',
+			'cashier.dialog_qty.qty_hint' => 'Masukkan jumlah barang',
+			'cashier.dialog_qty.btn_add' => 'Tambah',
+			'cashier.dialog_debt.title' => 'Bayar Hutang',
+			'cashier.dialog_debt.customer_name' => 'Nama Pelanggan',
+			'cashier.dialog_debt.customer_hint' => 'Masukkan nama pelanggan',
+			'cashier.dialog_pending.title' => 'Simpan Pending',
+			'cashier.dialog_pending.customer_required' => 'Nama Pelanggan *',
+			'cashier.dialog_pending.notes' => 'Catatan',
+			'cashier.dialog_pending.saved_success' => 'Pending disimpan untuk',
+			'cashier.dialog_unit.title' => 'Pilih Satuan -',
 			_ => null,
 		};
 	}

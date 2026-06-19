@@ -21,6 +21,7 @@ import '../../blocs/cashier/cashier_state.dart';
 import '../../utils/dialog_utils.dart';
 import 'printer_settings_page.dart';
 import 'share_receipt_page.dart';
+import '../../../i18n/strings.g.dart';
 
 class CashierPage extends StatefulWidget {
   const CashierPage({super.key});
@@ -165,9 +166,9 @@ class _CashierPageState extends State<CashierPage> {
               title: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  const Text('Konfirmasi Pembayaran'),
+                  Text(t.cashier.dialog_payment.title),
                   Tooltip(
-                    message: _printerConnected ? 'Printer Terhubung' : 'Printer Tidak Terhubung',
+                    message: _printerConnected ? t.cashier.dialog_payment.printer_ok : t.cashier.dialog_payment.printer_err,
                     child: Icon(
                       Icons.print,
                       color: _printerConnected ? AppTheme.primaryGreen : AppTheme.warningRed,
@@ -181,14 +182,14 @@ class _CashierPageState extends State<CashierPage> {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _infoRow('Total', _currency.format(data.totalSetelahDiskon)),
+                    _infoRow(t.cashier.total, _currency.format(data.totalSetelahDiskon)),
                     const SizedBox(height: 16),
                     TextField(
                       controller: bayarCtrl,
                       keyboardType: TextInputType.number,
                       autofocus: true,
                       decoration: InputDecoration(
-                        labelText: 'Jumlah Bayar',
+                        labelText: t.cashier.dialog_payment.pay_amount,
                         prefixText: 'Rp ',
                         suffixIcon: TextButton(
                           onPressed: () {
@@ -198,7 +199,7 @@ class _CashierPageState extends State<CashierPage> {
                               bayarCtrl.selection = TextSelection.collapsed(offset: bayarCtrl.text.length);
                             });
                           },
-                          child: const Text('Uang Pas'),
+                          child: Text(t.cashier.dialog_payment.exact_money),
                         ),
                       ),
                       onChanged: (val) {
@@ -241,7 +242,7 @@ class _CashierPageState extends State<CashierPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          kembali < 0 ? 'Kurang:' : 'Kembalian:',
+                          kembali < 0 ? t.cashier.dialog_payment.lack : t.cashier.dialog_payment.change,
                           style: const TextStyle(fontSize: 16),
                         ),
                         Text(
@@ -260,7 +261,7 @@ class _CashierPageState extends State<CashierPage> {
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Batal'),
+                  child: Text(t.cashier.btn_cancel),
                 ),
                 ElevatedButton(
                   onPressed: kembali < 0
@@ -275,7 +276,7 @@ class _CashierPageState extends State<CashierPage> {
                     backgroundColor: AppTheme.primaryGreen,
                     foregroundColor: Colors.white,
                   ),
-                  child: const Text('Proses Bayar'),
+                  child: Text(t.cashier.dialog_payment.btn_process),
                 ),
               ],
             );
@@ -331,93 +332,86 @@ class _CashierPageState extends State<CashierPage> {
     if (mounted) setState(() {});
   }
 
-  void _showPrinterBottomSheet() {
+  void _showPrinterDialog() {
     _checkPrinterConnection();
 
-    showModalBottomSheet(
+    showDialog(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
-      ),
       builder: (ctx) {
-        return Container(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Printer Thermal',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  Icon(
-                    Icons.print,
-                    color: _printerConnected
-                        ? AppTheme.primaryGreen
-                        : AppTheme.warningRed,
-                  ),
-                ],
+              Text(t.cashier.dialog_printer.title),
+              Icon(
+                Icons.print,
+                color: _printerConnected
+                    ? AppTheme.primaryGreen
+                    : AppTheme.warningRed,
               ),
-              const Divider(),
-              Row(
-                children: [
-                  Icon(
-                    Icons.circle,
-                    size: 10,
-                    color: _printerConnected
-                        ? AppTheme.primaryGreen
-                        : AppTheme.warningRed,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    _printerConnected ? 'Terhubung' : 'Tidak terhubung',
-                    style: TextStyle(
+            ],
+          ),
+          content: SizedBox(
+            width: 360,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.circle,
+                      size: 10,
                       color: _printerConnected
                           ? AppTheme.primaryGreen
                           : AppTheme.warningRed,
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Printer menggunakan koneksi Network (HTTP) ke print_server.py.',
-                style: TextStyle(fontSize: 13, color: AppTheme.neutralGrey),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton.icon(
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) =>
-                            const PrinterSettingsPage(),
+                    const SizedBox(width: 8),
+                    Text(
+                      _printerConnected ? t.cashier.dialog_printer.connected : t.cashier.dialog_printer.disconnected,
+                      style: TextStyle(
+                        color: _printerConnected
+                            ? AppTheme.primaryGreen
+                            : AppTheme.warningRed,
                       ),
-                    );
-                  },
-                  icon: const Icon(Icons.settings),
-                  label: const Text('Pengaturan Printer'),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                width: double.infinity,
-                child: TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('Tutup'),
+                const SizedBox(height: 12),
+                Text(
+                  t.cashier.dialog_printer.desc,
+                  style: const TextStyle(fontSize: 13, color: AppTheme.neutralGrey),
                 ),
-              ),
-            ],
+                const SizedBox(height: 16),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              const PrinterSettingsPage(),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.settings),
+                    label: Text(t.cashier.dialog_printer.settings),
+                  ),
+                ),
+              ],
+            ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: Text(t.cashier.dialog_printer.close),
+            ),
+          ],
         );
       },
     );
@@ -434,15 +428,15 @@ class _CashierPageState extends State<CashierPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text('Diskon - ${item.namaProduk}'),
+          title: Text('${t.cashier.dialog_discount.title} ${item.namaProduk}'),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment(value: 0, label: Text('Tidak')),
-                  ButtonSegment(value: 1, label: Text('%')),
-                  ButtonSegment(value: 2, label: Text('Rp')),
+                segments: [
+                  ButtonSegment(value: 0, label: Text(t.cashier.dialog_discount.no_discount)),
+                  ButtonSegment(value: 1, label: const Text('%')),
+                  ButtonSegment(value: 2, label: const Text('Rp')),
                 ],
                 selected: {tipe},
                 onSelectionChanged: (v) => setDialogState(() => tipe = v.first),
@@ -452,8 +446,8 @@ class _CashierPageState extends State<CashierPage> {
                 TextField(
                   controller: valueController,
                   decoration: InputDecoration(
-                    labelText: tipe == 1 ? 'Persen (%)' : 'Nominal (Rp)',
-                    hintText: tipe == 1 ? '10' : '5000',
+                    labelText: tipe == 1 ? t.cashier.dialog_discount.percent : t.cashier.dialog_discount.nominal,
+                    hintText: tipe == 1 ? t.cashier.dialog_discount.hint_percent : t.cashier.dialog_discount.hint_nominal,
                   ),
                   keyboardType: TextInputType.number,
                   onSubmitted: (_) {
@@ -469,7 +463,7 @@ class _CashierPageState extends State<CashierPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Batal'),
+              child: Text(t.cashier.btn_cancel),
             ),
             TextButton(
               onPressed: () {
@@ -479,7 +473,7 @@ class _CashierPageState extends State<CashierPage> {
                 );
                 Navigator.pop(ctx);
               },
-              child: const Text('Simpan'),
+              child: Text(t.cashier.btn_save),
             ),
           ],
         ),
@@ -500,15 +494,15 @@ class _CashierPageState extends State<CashierPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Diskon Global'),
+          title: Text(t.cashier.dialog_discount.global_title),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               SegmentedButton<int>(
-                segments: const [
-                  ButtonSegment(value: 0, label: Text('Tidak')),
-                  ButtonSegment(value: 1, label: Text('%')),
-                  ButtonSegment(value: 2, label: Text('Rp')),
+                segments: [
+                  ButtonSegment(value: 0, label: Text(t.cashier.dialog_discount.no_discount)),
+                  ButtonSegment(value: 1, label: const Text('%')),
+                  ButtonSegment(value: 2, label: const Text('Rp')),
                 ],
                 selected: {tipe},
                 onSelectionChanged: (v) => setDialogState(() => tipe = v.first),
@@ -519,8 +513,8 @@ class _CashierPageState extends State<CashierPage> {
                   controller: valueController,
                   autofocus: true,
                   decoration: InputDecoration(
-                    labelText: tipe == 1 ? 'Persen (%)' : 'Nominal (Rp)',
-                    hintText: tipe == 1 ? '10' : '5000',
+                    labelText: tipe == 1 ? t.cashier.dialog_discount.percent : t.cashier.dialog_discount.nominal,
+                    hintText: tipe == 1 ? t.cashier.dialog_discount.hint_percent : t.cashier.dialog_discount.hint_nominal,
                   ),
                   keyboardType: TextInputType.number,
                   onSubmitted: (_) {
@@ -536,7 +530,7 @@ class _CashierPageState extends State<CashierPage> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text('Batal'),
+              child: Text(t.cashier.btn_cancel),
             ),
             TextButton(
               onPressed: () {
@@ -546,7 +540,7 @@ class _CashierPageState extends State<CashierPage> {
                 );
                 Navigator.pop(ctx);
               },
-              child: const Text('Simpan'),
+              child: Text(t.cashier.btn_save),
             ),
           ],
         ),
@@ -564,14 +558,14 @@ class _CashierPageState extends State<CashierPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Ubah Jumlah - $namaProduk'),
+        title: Text('${t.cashier.dialog_qty.title_edit} $namaProduk'),
         content: TextField(
           controller: controller,
           keyboardType: TextInputType.number,
           autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Jumlah',
-            hintText: 'Masukkan jumlah barang',
+          decoration: InputDecoration(
+            labelText: t.cashier.dialog_qty.qty_label,
+            hintText: t.cashier.dialog_qty.qty_hint,
           ),
           onSubmitted: (value) {
             final newJumlah = int.tryParse(value) ?? 1;
@@ -586,7 +580,7 @@ class _CashierPageState extends State<CashierPage> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: Text(t.cashier.btn_cancel),
           ),
           TextButton(
             onPressed: () {
@@ -598,7 +592,7 @@ class _CashierPageState extends State<CashierPage> {
               }
               Navigator.pop(ctx);
             },
-            child: const Text('Simpan'),
+            child: Text(t.cashier.btn_save),
           ),
         ],
       ),
@@ -617,18 +611,18 @@ class _CashierPageState extends State<CashierPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Bayar Hutang'),
+        title: Text(t.cashier.dialog_debt.title),
         content: TextField(
           controller: namaController,
-          decoration: const InputDecoration(
-            labelText: 'Nama Pelanggan',
-            hintText: 'Masukkan nama pelanggan',
+          decoration: InputDecoration(
+            labelText: t.cashier.dialog_debt.customer_name,
+            hintText: t.cashier.dialog_debt.customer_hint,
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: Text(t.cashier.btn_cancel),
           ),
           TextButton(
             onPressed: () {
@@ -637,7 +631,7 @@ class _CashierPageState extends State<CashierPage> {
                 BayarHutangCashier(namaController.text),
               );
             },
-            child: const Text('Simpan'),
+            child: Text(t.cashier.btn_save),
           ),
         ],
       ),
@@ -651,25 +645,25 @@ class _CashierPageState extends State<CashierPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Simpan Pending'),
+        title: Text(t.cashier.dialog_pending.title),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             TextField(
               controller: namaController,
-              decoration: const InputDecoration(labelText: 'Nama Pelanggan *'),
+              decoration: InputDecoration(labelText: t.cashier.dialog_pending.customer_required),
             ),
             const SizedBox(height: 12),
             TextField(
               controller: catatanController,
-              decoration: const InputDecoration(labelText: 'Catatan'),
+              decoration: InputDecoration(labelText: t.cashier.dialog_pending.notes),
             ),
           ],
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: Text(t.cashier.btn_cancel),
           ),
           TextButton(
             onPressed: () async {
@@ -681,7 +675,7 @@ class _CashierPageState extends State<CashierPage> {
               final repo = sl<PendingOrderRepository>();
               final pendingId = await repo.addPending(
                 PendingOrder(
-                                    namaPelanggan: namaController.text.trim(),
+                                     namaPelanggan: namaController.text.trim(),
                   catatan: catatanController.text.trim().isEmpty
                       ? null
                       : catatanController.text.trim(),
@@ -706,13 +700,13 @@ class _CashierPageState extends State<CashierPage> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text(
-                    'Pending disimpan untuk ${namaController.text.trim()}',
+                    '${t.cashier.dialog_pending.saved_success} ${namaController.text.trim()}',
                   ),
                 ),
               );
               if (exitAfterSave) Navigator.pop(context);
             },
-            child: const Text('Simpan'),
+            child: Text(t.cashier.btn_save),
           ),
         ],
       ),
@@ -789,219 +783,225 @@ class _CashierPageState extends State<CashierPage> {
         final data = _resolveCashierData(state);
         return Scaffold(
           // No AppBar — kita sudah punya TopBar di shell desktop
-          body: Row(
-            children: [
-              // ══ PANEL KIRI: Cari Produk ══════════════════════════════
-              Container(
-                width: 420,
-                decoration: BoxDecoration(
-                  border: Border(
-                    right: BorderSide(
-                      color: Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white12
-                          : const Color(0xFFE5E7EB),
-                      width: 1,
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final screenWidth = constraints.maxWidth;
+              final leftPanelWidth = (screenWidth * 0.30).clamp(360.0, 480.0);
+              return Row(
+                children: [
+                  // ══ PANEL KIRI: Cari Produk ══════════════════════════════
+                  Container(
+                    width: leftPanelWidth,
+                    decoration: BoxDecoration(
+                      border: Border(
+                        right: BorderSide(
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppTheme.border
+                              : AppTheme.lightBorder,
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        // Search Bar
+                        Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: TextField(
+                            controller: _searchController,
+                            autofocus: true,
+                            decoration: InputDecoration(
+                              hintText: t.cashier.search_hint,
+                              prefixIcon: const Icon(Icons.search),
+                              suffixIcon: _searchController.text.isNotEmpty
+                                  ? IconButton(
+                                      icon: const Icon(Icons.clear),
+                                      onPressed: () {
+                                        _searchController.clear();
+                                        _searchProducts('');
+                                      },
+                                    )
+                                  : null,
+                              isDense: true,
+                            ),
+                            onChanged: (value) {
+                              setState(() {});
+                              _searchProducts(value);
+                            },
+                            onSubmitted: (value) {
+                              if (value.isNotEmpty) {
+                                final exactMatch = _products.where((p) => p.barcode == value).toList();
+                                if (exactMatch.isNotEmpty) {
+                                  _pilihProduk(exactMatch.first);
+                                  _searchController.clear();
+                                  _searchProducts('');
+                                } else if (_products.length == 1) {
+                                  _pilihProduk(_products.first);
+                                  _searchController.clear();
+                                  _searchProducts('');
+                                }
+                              }
+                            },
+                          ),
+                        ),
+
+                        // Pending Orders
+                        _buildPendingSection(),
+
+                        // Product List
+                        Expanded(
+                          child: _loadingProducts
+                              ? const Center(child: CircularProgressIndicator())
+                              : _products.isEmpty
+                                  ? Center(
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(Icons.search_off_rounded, size: 64, color: Colors.black12),
+                                          const SizedBox(height: 16),
+                                          Text(
+                                            t.cashier.product_not_found,
+                                            style: const TextStyle(color: Colors.grey, fontSize: 14),
+                                          ),
+                                        ],
+                                      ),
+                                    )
+                                  : ListView.builder(
+                                      padding: EdgeInsets.zero,
+                                      itemCount: _products.length,
+                                      itemBuilder: (context, index) {
+                                        final produk = _products[index];
+                                        final stokOk = produk.stok > 0;
+                                        return ListTile(
+                                          leading: CircleAvatar(
+                                            backgroundColor: stokOk
+                                                ? AppTheme.primaryGreen.withValues(alpha: 0.15)
+                                                : AppTheme.neutralGrey.withValues(alpha: 0.15),
+                                            child: Text(
+                                              '${produk.stok}',
+                                              style: TextStyle(
+                                                fontSize: 11,
+                                                color: stokOk
+                                                    ? AppTheme.primaryGreen
+                                                    : AppTheme.neutralGrey,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                          title: Text(
+                                            produk.nama,
+                                            style: const TextStyle(fontWeight: FontWeight.w600),
+                                          ),
+                                          subtitle: Text(
+                                            '${_currency.format(produk.hargaJual)} / ${produk.satuan}',
+                                            style: TextStyle(color: AppTheme.neutralGrey, fontSize: 13),
+                                          ),
+                                          trailing: IconButton(
+                                            icon: const Icon(
+                                              Icons.add_circle,
+                                              color: AppTheme.primaryGreen,
+                                            ),
+                                            onPressed: () => _pilihProduk(produk),
+                                          ),
+                                          onTap: () => _pilihProduk(produk),
+                                        );
+                                      },
+                                    ),
+                        ),
+
+                        // Info printer
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.print_rounded,
+                                size: 14,
+                                color: _printerConnected ? AppTheme.primaryGreen : AppTheme.neutralGrey,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                _printerConnected ? t.cashier.printer_connected : t.cashier.printer_disconnected,
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: _printerConnected ? AppTheme.primaryGreen : AppTheme.neutralGrey,
+                                ),
+                              ),
+                              const Spacer(),
+                              TextButton(
+                                onPressed: _showPrinterDialog,
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  minimumSize: Size.zero,
+                                ),
+                                child: Text(t.cashier.printer_settings, style: const TextStyle(fontSize: 11)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                child: Column(
-                  children: [
-                    // Search Bar
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: TextField(
-                        controller: _searchController,
-                        autofocus: true,
-                        decoration: InputDecoration(
-                          hintText: 'Cari atau scan produk... (Ctrl+F)',
-                          prefixIcon: const Icon(Icons.search),
-                          suffixIcon: _searchController.text.isNotEmpty
-                              ? IconButton(
-                                  icon: const Icon(Icons.clear),
-                                  onPressed: () {
-                                    _searchController.clear();
-                                    _searchProducts('');
-                                  },
-                                )
-                              : null,
-                          isDense: true,
-                        ),
-                        onChanged: (value) {
-                          setState(() {});
-                          _searchProducts(value);
-                        },
-                        onSubmitted: (value) {
-                          if (value.isNotEmpty) {
-                            final exactMatch = _products.where((p) => p.barcode == value).toList();
-                            if (exactMatch.isNotEmpty) {
-                              _pilihProduk(exactMatch.first);
-                              _searchController.clear();
-                              _searchProducts('');
-                            } else if (_products.length == 1) {
-                              _pilihProduk(_products.first);
-                              _searchController.clear();
-                              _searchProducts('');
-                            }
-                          }
-                        },
-                      ),
-                    ),
 
-                    // Pending Orders
-                    _buildPendingSection(),
-
-                    // Product List
-                    Expanded(
-                      child: _loadingProducts
-                          ? const Center(child: CircularProgressIndicator())
-                          : _products.isEmpty
-                              ? const Center(
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Icon(Icons.search_off_rounded, size: 64, color: Colors.black12),
-                                      SizedBox(height: 16),
-                                      Text(
-                                        'Produk tidak ditemukan',
-                                        style: TextStyle(color: Colors.grey, fontSize: 14),
-                                      ),
-                                    ],
-                                  ),
-                                )
-                              : ListView.builder(
-                                  padding: EdgeInsets.zero,
-                                  itemCount: _products.length,
-                                  itemBuilder: (context, index) {
-                                    final produk = _products[index];
-                                    final stokOk = produk.stok > 0;
-                                    return ListTile(
-                                      leading: CircleAvatar(
-                                        backgroundColor: stokOk
-                                            ? AppTheme.primaryGreen.withValues(alpha: 0.15)
-                                            : AppTheme.neutralGrey.withValues(alpha: 0.15),
-                                        child: Text(
-                                          '${produk.stok}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: stokOk
-                                                ? AppTheme.primaryGreen
-                                                : AppTheme.neutralGrey,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      title: Text(
-                                        produk.nama,
-                                        style: const TextStyle(fontWeight: FontWeight.w600),
-                                      ),
-                                      subtitle: Text(
-                                        '${_currency.format(produk.hargaJual)} / ${produk.satuan}',
-                                        style: TextStyle(color: AppTheme.neutralGrey, fontSize: 13),
-                                      ),
-                                      trailing: IconButton(
-                                        icon: const Icon(
-                                          Icons.add_circle,
-                                          color: AppTheme.primaryGreen,
-                                        ),
-                                        onPressed: () => _pilihProduk(produk),
-                                      ),
-                                      onTap: () => _pilihProduk(produk),
-                                    );
-                                  },
-                                ),
-                    ),
-
-                    // Info printer
-                    Padding(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                      child: Row(
-                        children: [
-                          Icon(
-                            Icons.print_rounded,
-                            size: 14,
-                            color: _printerConnected ? AppTheme.primaryGreen : AppTheme.neutralGrey,
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            _printerConnected ? 'Printer terhubung' : 'Printer tidak terhubung',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: _printerConnected ? AppTheme.primaryGreen : AppTheme.neutralGrey,
-                            ),
-                          ),
-                          const Spacer(),
-                          TextButton(
-                            onPressed: _showPrinterBottomSheet,
-                            style: TextButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                              minimumSize: Size.zero,
-                            ),
-                            child: const Text('Pengaturan', style: TextStyle(fontSize: 11)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              // ══ PANEL KANAN: Keranjang + Bayar ═══════════════════════
-              Expanded(
-                child: Column(
-                  children: [
-                    // Header Keranjang
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                      decoration: BoxDecoration(
-                        border: Border(
-                          bottom: BorderSide(
-                            color: Theme.of(context).brightness == Brightness.dark
-                                ? Colors.white12
-                                : const Color(0xFFE5E7EB),
-                          ),
-                        ),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.shopping_cart_rounded, size: 18),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Keranjang (${data.cart.length} item)',
-                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                          ),
-                          const Spacer(),
-                          if (data.cart.isNotEmpty)
-                            TextButton.icon(
-                              onPressed: () => context.read<CashierBloc>().add(InitCashier()),
-                              icon: const Icon(Icons.delete_sweep_rounded, size: 16),
-                              label: const Text('Kosongkan', style: TextStyle(fontSize: 12)),
-                              style: TextButton.styleFrom(
-                                foregroundColor: AppTheme.warningRed,
-                                padding: const EdgeInsets.symmetric(horizontal: 8),
+                  // ══ PANEL KANAN: Keranjang + Bayar ═══════════════════════
+                  Expanded(
+                    child: Column(
+                      children: [
+                        // Header Keranjang
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+                          decoration: BoxDecoration(
+                            border: Border(
+                              bottom: BorderSide(
+                                color: Theme.of(context).brightness == Brightness.dark
+                                    ? AppTheme.border
+                                    : AppTheme.lightBorder,
                               ),
                             ),
-                          TextButton.icon(
-                            onPressed: data.cart.isEmpty ? null : _savePending,
-                            icon: const Icon(Icons.pause_circle_outline_rounded, size: 16),
-                            label: const Text('Pending', style: TextStyle(fontSize: 12)),
-                            style: TextButton.styleFrom(
-                              foregroundColor: AppTheme.warningOrange,
-                              padding: const EdgeInsets.symmetric(horizontal: 8),
-                            ),
                           ),
-                        ],
-                      ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.shopping_cart_rounded, size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                '${t.cashier.cart_title} (${data.cart.length} item)',
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                              ),
+                              const Spacer(),
+                              if (data.cart.isNotEmpty)
+                                TextButton.icon(
+                                  onPressed: () => context.read<CashierBloc>().add(InitCashier()),
+                                  icon: const Icon(Icons.delete_sweep_rounded, size: 16),
+                                  label: Text(t.cashier.btn_clear, style: const TextStyle(fontSize: 12)),
+                                  style: TextButton.styleFrom(
+                                    foregroundColor: AppTheme.warningRed,
+                                    padding: const EdgeInsets.symmetric(horizontal: 8),
+                                  ),
+                                ),
+                              TextButton.icon(
+                                onPressed: data.cart.isEmpty ? null : _savePending,
+                                icon: const Icon(Icons.pause_circle_outline_rounded, size: 16),
+                                label: Text(t.cashier.btn_pending, style: const TextStyle(fontSize: 12)),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: AppTheme.warningOrange,
+                                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Cart List
+                        Expanded(child: _buildCartList(data)),
+
+                        // Bottom Panel Bayar
+                        _buildBottomPanel(data),
+                      ],
                     ),
-
-                    // Cart List
-                    Expanded(child: _buildCartList(data)),
-
-                    // Bottom Panel Bayar
-                    _buildBottomPanel(data),
-                  ],
-                ),
-              ),
-            ],
+                  ),
+                ],
+              );
+            },
           ),
         );
       },
@@ -1071,8 +1071,8 @@ class _CashierPageState extends State<CashierPage> {
               color: isFlashing
                   ? AppTheme.primaryGreen
                   : (Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white12
-                      : const Color(0xFFE5E7EB)),
+                      ? AppTheme.border
+                      : AppTheme.lightBorder),
               width: isFlashing ? 2 : 1,
             ),
             boxShadow: isFlashing
@@ -1103,7 +1103,7 @@ class _CashierPageState extends State<CashierPage> {
                         children: [
                           Text(
                             _currency.format(item.hargaJual),
-                            style: TextStyle(color: AppTheme.primaryGreen, fontSize: 12),
+                            style: const TextStyle(color: AppTheme.primaryGreen, fontSize: 12),
                           ),
                           if (hasDiskon) ...
                             [
@@ -1116,7 +1116,7 @@ class _CashierPageState extends State<CashierPage> {
                                 ),
                                 child: Text(
                                   'Diskon ${item.diskonTipe == 1 ? "${item.diskonValue.toStringAsFixed(0)}%" : _currency.format(item.diskonValue)}',
-                                  style: TextStyle(fontSize: 10, color: AppTheme.warningRed, fontWeight: FontWeight.w600),
+                                  style: const TextStyle(fontSize: 10, color: AppTheme.warningRed, fontWeight: FontWeight.w600),
                                 ),
                               ),
                             ],
@@ -1206,10 +1206,10 @@ class _CashierPageState extends State<CashierPage> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: isDark ? Theme.of(context).colorScheme.surfaceContainer : Colors.white,
+        color: isDark ? AppTheme.surface : AppTheme.lightSurface,
         border: Border(
           top: BorderSide(
-            color: isDark ? Colors.white12 : const Color(0xFFE5E7EB),
+            color: isDark ? AppTheme.border : AppTheme.lightBorder,
           ),
         ),
       ),
@@ -1222,7 +1222,7 @@ class _CashierPageState extends State<CashierPage> {
             children: [
               Row(
                 children: [
-                  const Text('Total', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
+                  Text(t.cashier.total, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600)),
                   const SizedBox(width: 8),
                   InkWell(
                     onTap: () => _showGlobalDiskonDialog(data),
@@ -1244,7 +1244,7 @@ class _CashierPageState extends State<CashierPage> {
                   if (data.totalDiskon > 0)
                     Text(
                       _currency.format(data.total),
-                      style: TextStyle(
+                      style: const TextStyle(
                         fontSize: 13,
                         color: AppTheme.neutralGrey,
                         decoration: TextDecoration.lineThrough,
@@ -1276,8 +1276,8 @@ class _CashierPageState extends State<CashierPage> {
                       borderRadius: BorderRadius.circular(4),
                     ),
                     child: Text(
-                      'Diskon Item: ${_currency.format(data.totalDiskon)}',
-                      style: TextStyle(fontSize: 11, color: AppTheme.warningRed, fontWeight: FontWeight.w600),
+                      '${t.cashier.discount_item} ${_currency.format(data.totalDiskon)}',
+                      style: const TextStyle(fontSize: 11, color: AppTheme.warningRed, fontWeight: FontWeight.w600),
                     ),
                   ),
                   if (data.globalDiskonValue > 0) ...[
@@ -1289,8 +1289,8 @@ class _CashierPageState extends State<CashierPage> {
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
-                        'Diskon Global: ${_currency.format(data.total - data.totalDiskon - data.totalSetelahDiskon)}',
-                        style: TextStyle(fontSize: 11, color: AppTheme.warningRed, fontWeight: FontWeight.w600),
+                        '${t.cashier.discount_global_label} ${_currency.format(data.total - data.totalDiskon - data.totalSetelahDiskon)}',
+                        style: const TextStyle(fontSize: 11, color: AppTheme.warningRed, fontWeight: FontWeight.w600),
                       ),
                     ),
                   ],
@@ -1304,7 +1304,7 @@ class _CashierPageState extends State<CashierPage> {
               OutlinedButton.icon(
                 onPressed: data.cart.isEmpty ? null : _showHutangDialog,
                 icon: const Icon(Icons.book_rounded, size: 18),
-                label: const Text('Catat Hutang'),
+                label: Text(t.cashier.btn_debt),
                 style: OutlinedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 ),
@@ -1320,7 +1320,7 @@ class _CashierPageState extends State<CashierPage> {
                         )
                       : const Icon(Icons.payments_rounded, size: 20),
                   label: Text(
-                    _isPrinting ? 'Memproses...' : 'Bayar Sekarang',
+                    _isPrinting ? t.cashier.btn_processing : t.cashier.btn_pay,
                     style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
                   ),
                   style: ElevatedButton.styleFrom(

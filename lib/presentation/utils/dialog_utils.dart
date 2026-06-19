@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../domain/entities/produk.dart';
+import '../../../i18n/strings.g.dart';
 
 class DialogUtils {
   static final _currency = NumberFormat.currency(
@@ -36,7 +37,7 @@ class DialogUtils {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Pilih Satuan - ${produk.nama}'),
+        title: Text('${t.cashier.dialog_unit.title} ${produk.nama}'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -98,12 +99,12 @@ class DialogUtils {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Jumlah Barang'),
+        title: Text(t.cashier.dialog_qty.title),
         content: TextField(
           controller: qtyCtrl,
           keyboardType: TextInputType.number,
           autofocus: true,
-          decoration: const InputDecoration(labelText: 'Jumlah'),
+          decoration: InputDecoration(labelText: t.cashier.dialog_qty.qty_label),
           onSubmitted: (val) {
             final qty = int.tryParse(val) ?? 1;
             if (qty > 0) onSubmitted(qty);
@@ -113,7 +114,7 @@ class DialogUtils {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: Text(t.cashier.btn_cancel),
           ),
           TextButton(
             onPressed: () {
@@ -121,7 +122,7 @@ class DialogUtils {
               if (qty > 0) onSubmitted(qty);
               Navigator.pop(ctx);
             },
-            child: const Text('Tambah'),
+            child: Text(t.cashier.dialog_qty.btn_add),
           ),
         ],
       ),

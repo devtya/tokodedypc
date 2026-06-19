@@ -125,7 +125,7 @@ Gunakan notasi berikut untuk menyebut huruf versi yang ingin dinaikkan:
 - **y** — Minor (fitur baru, reset z ke 0)
 - **z** — Patch (bug fix / perbaikan kecil)
 
-Current: **1.7.3**
+Current: **1.0.7** (tag: v1.0.7)
 
 ## Log Konvensi
 
