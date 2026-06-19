@@ -220,7 +220,7 @@ class _HomeDesktopShellState extends State<_HomeDesktopShell> {
               } catch (e) {
                 if (ctx.mounted) {
                   ScaffoldMessenger.of(ctx).showSnackBar(
-                    SnackBar(content: Text(t.dialog.save_failed(error: e.toString()))),
+                    SnackBar(content: Text('${t.dialog.save_failed}: ${e.toString()}')),
                   );
                 }
               }

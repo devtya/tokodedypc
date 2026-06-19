@@ -453,7 +453,7 @@ class SupabaseSyncService {
 
     final sessionValid = await _ensureValidSession();
     if (!sessionValid) {
-      _syncEventController.add(const SyncEvent(
+      _syncEventController.add(SyncEvent(
         type: 'auth_expired',
         tableName: 'queue',
         recordId: '',
@@ -870,7 +870,7 @@ class SyncEvent {
   final String error;
   final DateTime timestamp;
 
-  const SyncEvent({
+  SyncEvent({
     required this.type,
     required this.tableName,
     required this.recordId,

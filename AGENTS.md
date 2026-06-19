@@ -153,6 +153,12 @@ Current: **1.7.3**
 - **Files**: `lib/presentation/pages/shared/pin_verify_page.dart`
 - **Date**: 2026-06-19
 
+### Bug: Build Gagal — i18n slang tidak regenerasi + const SyncEvent
+- **Root cause**: (1) `strings.i18n.json` sudah memiliki section `navigation` dan `dialog`, tapi `strings.g.dart` dan `strings_en.g.dart` tidak diregenerasi setelah penambahan tersebut (masih menunjuk 27 string dari Juni 2024). Akibatnya `home_page.dart` yang mengakses `t.navigation.*` dan `t.dialog.*` gagal kompilasi dengan error `getter 'navigation'/'dialog' isn't defined for type 'Translations'`. (2) Constructor `const SyncEvent` di `supabase_sync_service.dart` menggunakan `DateTime.now()` di `initializer list`, yang tidak valid karena `DateTime.now()` bukan expression konstan.
+- **Fix**: (1) Menjalankan `dart run slang` untuk meregenerasi `strings.g.dart` + `strings_en.g.dart`. Memperbaiki `save_failed` yang menggunakan placeholder `{error}` (tidak dikenali slang sebagai parameter) menjadi string biasa tanpa placeholder. (2) Menghapus `const` dari constructor `SyncEvent` dan menghapus `const` dari satu-satunya call site `_syncEventController.add(const SyncEvent(...))`.
+- **Files**: `lib/i18n/strings.g.dart`, `lib/i18n/strings_en.g.dart` (regenerated), `lib/i18n/strings.i18n.json`, `lib/data/services/supabase_sync_service.dart`, `lib/presentation/pages/shared/home_page.dart`
+- **Date**: 2026-06-19
+
 ### Bug: Pembelian — Satuan dasar tergantikan oleh satuan konversi saat simpan ke pending
 - **Root cause**: Saat fitur tambah satuan digunakan di keranjang (misal: "PAK"), satuan ditambahkan dengan benar. Namun saat disimpan ke *Pending Pembelian*, argumen `satuanId` dan `konversi` tidak dimasukkan ke dalam `PendingPembelianItemData` sehingga nilai di database menjadi null. Akibatnya saat pending dibuka kembali, sistem mengira produk tersebut menggunakan "satuan dasar", merusak update HPP produk utama dan membingungkan kasir (nama "Dasar" dengan harga "PAK"). Selain itu, di Kasir (Penjualan), `satuanId` dan `konversi` juga tidak diteruskan ke `AddToCart` sehingga pemotongan stok untuk item konversi menjadi salah (hanya terpotong 1, bukan sesuai nilai konversi).
 - **Fix**: Menambahkan passing data `satuanId` dan `konversi` ke `PendingPembelianItemData` di `pembelian_form_page.dart` ketika `_submit()` pending. Mengubah event `AddToCart` di `cashier_page.dart` (baik via scan maupun cari produk) agar menyertakan parameter `satuanId` dan `konversi`.

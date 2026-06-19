@@ -51,6 +51,8 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$dashboard$en dashboard = Translations$dashboard$en._(_root);
 	late final Translations$quick_actions$en quick_actions = Translations$quick_actions$en._(_root);
 	late final Translations$price_update$en price_update = Translations$price_update$en._(_root);
+	late final Translations$navigation$en navigation = Translations$navigation$en._(_root);
+	late final Translations$dialog$en dialog = Translations$dialog$en._(_root);
 }
 
 // Path: login
@@ -194,6 +196,102 @@ class Translations$price_update$en {
 	String get product_deleted => 'Produk Dihapus';
 }
 
+// Path: navigation
+class Translations$navigation$en {
+	Translations$navigation$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Dashboard'
+	String get dashboard => 'Dashboard';
+
+	/// en: 'Kasir'
+	String get kasir => 'Kasir';
+
+	/// en: 'Produk'
+	String get produk => 'Produk';
+
+	/// en: 'Riwayat Transaksi'
+	String get transaksi => 'Riwayat Transaksi';
+
+	/// en: 'Laporan'
+	String get laporan => 'Laporan';
+
+	/// en: 'Pembelian'
+	String get pembelian => 'Pembelian';
+
+	/// en: 'Purchase Order'
+	String get purchase_order => 'Purchase Order';
+
+	/// en: 'Supplier'
+	String get supplier => 'Supplier';
+
+	/// en: 'Hutang'
+	String get hutang => 'Hutang';
+
+	/// en: 'Online Order'
+	String get online_order => 'Online Order';
+
+	/// en: 'Pengguna'
+	String get pengguna => 'Pengguna';
+
+	/// en: 'Pengaturan'
+	String get pengaturan => 'Pengaturan';
+
+	/// en: 'KASIR'
+	String get group_kasir => 'KASIR';
+
+	/// en: 'STOK & PEMBELIAN'
+	String get group_stok => 'STOK & PEMBELIAN';
+
+	/// en: 'KEUANGAN'
+	String get group_keuangan => 'KEUANGAN';
+
+	/// en: 'ONLINE'
+	String get group_online => 'ONLINE';
+
+	/// en: 'ADMIN'
+	String get group_admin => 'ADMIN';
+
+	/// en: 'PENGATURAN'
+	String get group_pengaturan => 'PENGATURAN';
+}
+
+// Path: dialog
+class Translations$dialog$en {
+	Translations$dialog$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Lengkapi Email'
+	String get email_title => 'Lengkapi Email';
+
+	/// en: 'Anda login menggunakan username. Silakan isi email untuk keamanan akun dan fitur lupa password.'
+	String get email_subtitle => 'Anda login menggunakan username. Silakan isi email untuk keamanan akun dan fitur lupa password.';
+
+	/// en: 'Email'
+	String get email_label => 'Email';
+
+	/// en: 'Nanti'
+	String get btn_nanti => 'Nanti';
+
+	/// en: 'Simpan'
+	String get btn_simpan => 'Simpan';
+
+	/// en: 'Email tidak boleh kosong'
+	String get email_empty => 'Email tidak boleh kosong';
+
+	/// en: 'Format email tidak valid'
+	String get email_invalid => 'Format email tidak valid';
+
+	/// en: 'Gagal menyimpan'
+	String get save_failed => 'Gagal menyimpan';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -229,6 +327,32 @@ extension on Translations {
 			'quick_actions.add' => 'TAMBAH',
 			'price_update.title' => 'Update Harga Barang',
 			'price_update.product_deleted' => 'Produk Dihapus',
+			'navigation.dashboard' => 'Dashboard',
+			'navigation.kasir' => 'Kasir',
+			'navigation.produk' => 'Produk',
+			'navigation.transaksi' => 'Riwayat Transaksi',
+			'navigation.laporan' => 'Laporan',
+			'navigation.pembelian' => 'Pembelian',
+			'navigation.purchase_order' => 'Purchase Order',
+			'navigation.supplier' => 'Supplier',
+			'navigation.hutang' => 'Hutang',
+			'navigation.online_order' => 'Online Order',
+			'navigation.pengguna' => 'Pengguna',
+			'navigation.pengaturan' => 'Pengaturan',
+			'navigation.group_kasir' => 'KASIR',
+			'navigation.group_stok' => 'STOK & PEMBELIAN',
+			'navigation.group_keuangan' => 'KEUANGAN',
+			'navigation.group_online' => 'ONLINE',
+			'navigation.group_admin' => 'ADMIN',
+			'navigation.group_pengaturan' => 'PENGATURAN',
+			'dialog.email_title' => 'Lengkapi Email',
+			'dialog.email_subtitle' => 'Anda login menggunakan username. Silakan isi email untuk keamanan akun dan fitur lupa password.',
+			'dialog.email_label' => 'Email',
+			'dialog.btn_nanti' => 'Nanti',
+			'dialog.btn_simpan' => 'Simpan',
+			'dialog.email_empty' => 'Email tidak boleh kosong',
+			'dialog.email_invalid' => 'Format email tidak valid',
+			'dialog.save_failed' => 'Gagal menyimpan',
 			_ => null,
 		};
 	}

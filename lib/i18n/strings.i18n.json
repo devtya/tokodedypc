@@ -68,6 +68,6 @@
     "btn_simpan": "Simpan",
     "email_empty": "Email tidak boleh kosong",
     "email_invalid": "Format email tidak valid",
-    "save_failed": "Gagal menyimpan: {error}"
+    "save_failed": "Gagal menyimpan"
   }
 }
