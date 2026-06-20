@@ -144,6 +144,9 @@ class SyncBloc extends Bloc<SyncEvent, SyncState> {
     emit(SyncInProgress(isOnline: online, logs: List.of(_logs)));
 
     try {
+      // Reset retry counts and error messages so stuck items are retried
+      await _syncService.resetQueueRetryCounts();
+
       // Flush antrian operasi offline
       final flushed = await _syncService.flushQueue();
       if (flushed > 0) {

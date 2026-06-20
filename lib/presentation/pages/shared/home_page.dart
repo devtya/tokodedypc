@@ -6,7 +6,6 @@ import '../../../i18n/strings.g.dart';
 import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/constants/app_constants.dart';
-import 'login_page.dart';
 import '../../../domain/entities/user.dart';
 import '../../../domain/repositories/auth_repository.dart';
 import '../../blocs/auth/auth_bloc.dart';
@@ -294,17 +293,7 @@ class _HomeDesktopShellState extends State<_HomeDesktopShell> {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, AuthState>(
-      listenWhen: (prev, current) => current is Unauthenticated,
-      listener: (context, state) {
-        _emailPromptShown = false;
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (_) => const LoginPage()),
-          (route) => false,
-        );
-      },
-      child: BlocBuilder<AuthBloc, AuthState>(
+    return BlocBuilder<AuthBloc, AuthState>(
         builder: (context, authState) {
           String username = '';
           String role = 'kasir';
@@ -372,7 +361,6 @@ class _HomeDesktopShellState extends State<_HomeDesktopShell> {
             ),
           );
         },
-      ),
     );
   }
 }

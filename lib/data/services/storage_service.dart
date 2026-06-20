@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:injectable/injectable.dart';
@@ -23,7 +24,7 @@ class StorageService {
       final url = _supabase.storage.from('product_images').getPublicUrl(fileName);
       return url;
     } catch (e) {
-      print('Error uploading image: $e');
+      debugPrint('Error uploading image: $e');
       return null;
     }
   }

@@ -48,7 +48,7 @@ class WindowsUsbPrinterService implements PrinterService {
 
     for (final item in data.items) {
       String qtyStr = '${item.jumlah} ${item.satuan ?? ''}';
-      if (item.konversi != null && item.konversi! > 1) {
+      if (item.konversi > 1) {
         qtyStr += ' (@${item.konversi})';
       }
       
@@ -86,14 +86,14 @@ class WindowsUsbPrinterService implements PrinterService {
       ]);
     }
     
-    if (data.globalDiskon != null && data.globalDiskon! > 0) {
+    if (data.globalDiskon > 0) {
       bytes += generator.row([
         PosColumn(text: 'Disc Global', width: 6),
-        PosColumn(text: '-${_formatRp(data.globalDiskon!)}', width: 6, styles: const PosStyles(align: PosAlign.right)),
+        PosColumn(text: '-${_formatRp(data.globalDiskon)}', width: 6, styles: const PosStyles(align: PosAlign.right)),
       ]);
     }
 
-    final finalTotal = data.subtotal - data.totalDiskon - (data.globalDiskon ?? 0);
+    final finalTotal = data.subtotal - data.totalDiskon - data.globalDiskon;
     bytes += generator.row([
       PosColumn(text: 'TOTAL', width: 6, styles: const PosStyles(bold: true)),
       PosColumn(text: _formatRp(finalTotal), width: 6, styles: const PosStyles(align: PosAlign.right, bold: true)),

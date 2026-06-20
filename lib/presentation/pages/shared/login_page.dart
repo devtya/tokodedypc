@@ -8,7 +8,6 @@ import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/auth/auth_state.dart';
 import '../../../i18n/strings.g.dart';
-import 'home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -121,7 +120,11 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
+  bool _isLoggingIn = false;
+
   void _login() {
+    if (_isLoggingIn) return;
+
     final username = _usernameController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -134,7 +137,27 @@ class _LoginPageState extends State<LoginPage>
       return;
     }
 
+    _isLoggingIn = true;
     context.read<AuthBloc>().add(LoginEvent(username, password));
+  }
+
+  String _friendlyError(String raw) {
+    if (raw.contains('Timeout') ||
+        raw.contains('timed out') ||
+        raw.contains('110') ||
+        raw.contains('SocketException') ||
+        raw.contains('No address') ||
+        raw.contains('Failed host lookup') ||
+        raw.contains('Network is unreachable') ||
+        raw.contains('Connection refused')) {
+      return 'Gagal terhubung ke server.\nPeriksa koneksi internet Anda dan coba lagi.';
+    }
+    if (raw.contains('Invalid login credentials') ||
+        raw.contains('Email not confirmed') ||
+        raw.contains('User not found')) {
+      return 'Email atau password salah.';
+    }
+    return raw;
   }
 
   @override
@@ -142,11 +165,14 @@ class _LoginPageState extends State<LoginPage>
     return BlocListener<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is Authenticated) {
-          // Biarkan main.dart yang mengatur routing ke _PinGate
+          debugPrint('[LoginPage] Authenticated state received, resetting _isLoggingIn');
+          _isLoggingIn = false;
         } else if (state is AuthError) {
+          debugPrint('[LoginPage] AuthError: ${state.message}');
+          _isLoggingIn = false;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(state.message),
+              content: Text(_friendlyError(state.message)),
               backgroundColor: AppTheme.warningRed,
             ),
           );
@@ -290,18 +316,21 @@ class _LoginPageState extends State<LoginPage>
                                   return SizedBox(
                                     height: 48,
                                     child: ElevatedButton(
-                                      onPressed: isLoading ? null : _login,
+                                      onPressed:
+                                          isLoading ? null : _login,
                                       child: isLoading
                                           ? const SizedBox(
                                               width: 20,
                                               height: 20,
-                                              child: CircularProgressIndicator(
+                                              child:
+                                                  CircularProgressIndicator(
                                                 strokeWidth: 2,
                                                 color: Colors.white,
                                               ),
                                             )
                                           : Text(
-                                              t.login.login_btn.toUpperCase(),
+                                              t.login.login_btn
+                                                  .toUpperCase(),
                                               style: const TextStyle(
                                                 fontSize: 14,
                                                 fontWeight: FontWeight.w800,

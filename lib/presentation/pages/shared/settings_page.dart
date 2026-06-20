@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import '../../../core/di/injection.dart';
 import '../../../core/services/update_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/services/supabase_sync_service.dart';
+import '../../../data/database/app_database.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_event.dart';
 import '../../blocs/theme/theme_cubit.dart';
@@ -30,23 +32,108 @@ class SettingsPage extends StatefulWidget {
 class _SettingsPageState extends State<SettingsPage> {
   final _updateService = sl<UpdateService>();
   final _syncService = sl<SupabaseSyncService>();
+  
+  final _scrollController = ScrollController();
+  final _queueScrollController = ScrollController();
+  final _logScrollController = ScrollController();
+  
+  final _tampilanKey = GlobalKey();
+  final _printerKey = GlobalKey();
+  final _penggunaKey = GlobalKey();
+  final _pinKey = GlobalKey();
+  final _syncKey = GlobalKey();
+  final _tentangKey = GlobalKey();
+
   String _appVersion = '';
   bool _checkingUpdate = false;
   _SettingsSection _activeSection = _SettingsSection.tampilan;
   int _pendingQueueCount = 0;
+  bool _isProgrammaticScroll = false;
+  
+  StreamSubscription<List<PendingSyncQueueTableData>>? _queueSubscription;
 
   @override
   void initState() {
     super.initState();
     _loadVersion();
-    _loadPendingQueueCount();
+    _scrollController.addListener(_onScroll);
+    
+    // Listen to queue changes to update sidebar badge in real-time
+    _queueSubscription = _syncService.watchPendingQueue().listen((items) {
+      if (mounted) {
+        setState(() {
+          _pendingQueueCount = items.length;
+        });
+      }
+    });
   }
 
-  Future<void> _loadPendingQueueCount() async {
-    try {
-      final count = await _syncService.pendingQueueCount;
-      if (mounted) setState(() => _pendingQueueCount = count);
-    } catch (_) {}
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    _queueScrollController.dispose();
+    _logScrollController.dispose();
+    _queueSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_isProgrammaticScroll || !mounted) return;
+    
+    final sections = [
+      (_tampilanKey, _SettingsSection.tampilan),
+      (_printerKey, _SettingsSection.printer),
+      (_penggunaKey, _SettingsSection.pengguna),
+      (_pinKey, _SettingsSection.pin),
+      (_syncKey, _SettingsSection.sync),
+      (_tentangKey, _SettingsSection.tentang),
+    ];
+
+    _SettingsSection? bestSection;
+    double bestDiff = double.infinity;
+
+    for (final (key, section) in sections) {
+      final context = key.currentContext;
+      if (context != null) {
+        final box = context.findRenderObject() as RenderBox?;
+        if (box != null) {
+          final position = box.localToGlobal(Offset.zero);
+          // position.dy is relative to the screen. 
+          // We look for the section closest to the top offset of the content container (around 120px).
+          final diff = (position.dy - 120).abs();
+          if (diff < bestDiff) {
+            bestDiff = diff;
+            bestSection = section;
+          }
+        }
+      }
+    }
+
+    if (bestSection != null && bestSection != _activeSection) {
+      setState(() {
+        _activeSection = bestSection!;
+      });
+    }
+  }
+
+  void _scrollToSection(GlobalKey key, _SettingsSection section) async {
+    setState(() {
+      _activeSection = section;
+      _isProgrammaticScroll = true;
+    });
+    
+    final context = key.currentContext;
+    if (context != null) {
+      await Scrollable.ensureVisible(
+        context,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeInOut,
+      );
+    }
+    
+    await Future.delayed(const Duration(milliseconds: 100));
+    _isProgrammaticScroll = false;
   }
 
   Future<void> _loadVersion() async {
@@ -219,12 +306,20 @@ class _SettingsPageState extends State<SettingsPage> {
                   children: navItems.map((item) {
                     final (section, icon, label, badge) = item;
                     final isActive = _activeSection == section;
+                    final key = switch (section) {
+                      _SettingsSection.tampilan => _tampilanKey,
+                      _SettingsSection.printer => _printerKey,
+                      _SettingsSection.pengguna => _penggunaKey,
+                      _SettingsSection.pin => _pinKey,
+                      _SettingsSection.sync => _syncKey,
+                      _SettingsSection.tentang => _tentangKey,
+                    };
                     return _NavItem(
                       icon: icon,
                       label: label,
                       badge: badge,
                       isActive: isActive,
-                      onTap: () => setState(() => _activeSection = section),
+                      onTap: () => _scrollToSection(key, section),
                     );
                   }).toList(),
                 ),
@@ -289,17 +384,33 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildContent() {
     return SingleChildScrollView(
+      controller: _scrollController,
       padding: const EdgeInsets.all(32),
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 700),
-        child: switch (_activeSection) {
-          _SettingsSection.tampilan => _buildTampilan(),
-          _SettingsSection.printer => const PrinterSettingsPage(),
-          _SettingsSection.pengguna => _buildPengguna(),
-          _SettingsSection.pin => const PinSettingsPage(),
-          _SettingsSection.sync => _buildSync(),
-          _SettingsSection.tentang => _buildTentang(),
-        },
+        constraints: const BoxConstraints(maxWidth: 800),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Section 1: Tampilan
+            Container(key: _tampilanKey, child: _buildTampilan()),
+            const Divider(height: 64, thickness: 1),
+            // Section 2: Printer
+            Container(key: _printerKey, child: const PrinterSettingsPage()),
+            const Divider(height: 64, thickness: 1),
+            // Section 3: Pengguna
+            Container(key: _penggunaKey, child: _buildPengguna()),
+            const Divider(height: 64, thickness: 1),
+            // Section 4: PIN & Keamanan
+            Container(key: _pinKey, child: const PinSettingsPage()),
+            const Divider(height: 64, thickness: 1),
+            // Section 5: Sinkronisasi
+            Container(key: _syncKey, child: _buildSync()),
+            const Divider(height: 64, thickness: 1),
+            // Section 6: Tentang Aplikasi
+            Container(key: _tentangKey, child: _buildTentang()),
+            const SizedBox(height: 200), // Extra bottom padding for scroll space
+          ],
+        ),
       ),
     );
   }
@@ -362,9 +473,9 @@ class _SettingsPageState extends State<SettingsPage> {
       children: [
         _sectionTitle('Manajemen Pengguna', Icons.people_rounded),
         const SizedBox(height: 16),
-        SizedBox(
-          height: 500,
-          child: const UserManagementPage(),
+        const SizedBox(
+          height: 450,
+          child: UserManagementPage(),
         ),
       ],
     );
@@ -426,6 +537,7 @@ class _SettingsPageState extends State<SettingsPage> {
             }
 
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Card: Status Sinkronisasi
                 Card(
@@ -475,7 +587,6 @@ class _SettingsPageState extends State<SettingsPage> {
                                 ? null
                                 : () {
                                     context.read<SyncBloc>().add(const SyncTriggered());
-                                    _loadPendingQueueCount();
                                   },
                             icon: const Icon(Icons.sync, size: 16),
                             label: Text(isSyncing ? 'Sedang Sinkron...' : 'Sinkronkan Sekarang'),
@@ -485,125 +596,493 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                   ),
                 ),
+                
                 const SizedBox(height: 16),
-                // Card: Antrian Sync
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.queue_rounded,
-                          color: _pendingQueueCount > 0 ? AppTheme.warningRed : AppTheme.primaryGreen,
-                          size: 28,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text('Antrian Sinkronisasi',
-                                  style: TextStyle(fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 2),
-                              Text(
-                                _pendingQueueCount > 0
-                                    ? '$_pendingQueueCount item menunggu untuk disinkronkan'
-                                    : 'Tidak ada data yang menunggu sinkronisasi',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: _pendingQueueCount > 0 ? AppTheme.warningRed : AppTheme.neutralGrey,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (_pendingQueueCount > 0)
-                          TextButton(
-                            onPressed: () {
-                              context.read<SyncBloc>().add(const SyncTriggered());
-                              _loadPendingQueueCount();
-                            },
-                            child: const Text('Kirim'),
-                          ),
-                      ],
-                    ),
-                  ),
+                
+                // StreamBuilder: Antrean Sync
+                StreamBuilder<List<PendingSyncQueueTableData>>(
+                  stream: _syncService.watchPendingQueue(),
+                  builder: (context, snapshot) {
+                    final queueItems = snapshot.data ?? [];
+                    return _buildQueueListCard(queueItems, isSyncing);
+                  },
                 ),
+                
                 const SizedBox(height: 16),
+                
+                // Card: Log Aktivitas Sinkronisasi
+                _buildLogsCard(state),
+                
+                const SizedBox(height: 16),
+                
                 // Card: Utility
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Utilitas', style: TextStyle(fontWeight: FontWeight.w600)),
-                        const SizedBox(height: 12),
-                        // Bersihkan duplikat satuan
-                        OutlinedButton.icon(
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text('Bersihkan Duplikat?'),
-                                content: const Text(
-                                  'Fungsi ini akan memindai seluruh produk dan menghapus satuan yang namanya dobel.\n\n'
-                                  'Satuan yang sudah pernah dipakai di transaksi TIDAK akan dihapus.',
-                                ),
-                                actions: [
-                                  TextButton(
-                                      onPressed: () => Navigator.pop(ctx, false),
-                                      child: const Text('Batal')),
-                                  TextButton(
-                                      onPressed: () => Navigator.pop(ctx, true),
-                                      style: TextButton.styleFrom(foregroundColor: Colors.blue),
-                                      child: const Text('Lanjutkan')),
-                                ],
-                              ),
-                            );
-                            if (confirm == true && context.mounted) {
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (_) => const Center(child: CircularProgressIndicator()),
-                              );
-                              try {
-                                final repo = sl<ProdukRepository>();
-                                final result = await repo.cleanupDuplicateSatuan();
-                                if (context.mounted) {
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text(
-                                        'Selesai! Dihapus: ${result.deleted}, Dilindungi: ${result.protected}',
-                                      ),
-                                      backgroundColor: Colors.blue,
-                                    ),
-                                  );
-                                }
-                              } catch (e) {
-                                if (context.mounted) {
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text('Gagal: $e')),
-                                  );
-                                }
-                              }
-                            }
-                          },
-                          icon: const Icon(Icons.cleaning_services, size: 16),
-                          label: const Text('Bersihkan Duplikat Satuan'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+                _buildUtilitasCard(),
               ],
             );
           },
         ),
       ],
     );
+  }
+
+  Widget _buildQueueListCard(List<PendingSyncQueueTableData> queueItems, bool isSyncing) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.queue_rounded,
+                  color: queueItems.isNotEmpty ? AppTheme.warningRed : AppTheme.primaryGreen,
+                  size: 24,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Antrean Data (${queueItems.length} item)',
+                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                if (queueItems.isNotEmpty)
+                  TextButton.icon(
+                    onPressed: isSyncing
+                        ? null
+                        : () {
+                            context.read<SyncBloc>().add(const SyncTriggered());
+                          },
+                    icon: const Icon(Icons.send_rounded, size: 14),
+                    label: const Text('Kirim Semua'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (queueItems.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.check_circle_outline_rounded, color: AppTheme.primaryGreen, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Semua data lokal telah sinkron dengan cloud.',
+                      style: TextStyle(color: AppTheme.neutralGrey, fontSize: 13),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Container(
+                constraints: const BoxConstraints(maxHeight: 250),
+                decoration: BoxDecoration(
+                  border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE5E7EB)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Scrollbar(
+                  controller: _queueScrollController,
+                  thumbVisibility: true,
+                  child: ListView.separated(
+                    controller: _queueScrollController,
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.all(8),
+                    itemCount: queueItems.length,
+                    separatorBuilder: (_, index) => Divider(height: 8, color: isDark ? Colors.white12 : const Color(0xFFE5E7EB)),
+                    itemBuilder: (context, index) {
+                      final item = queueItems[index];
+                      final isDelete = item.operation == 'delete';
+                      final details = _getQueueItemDetails(item.targetTable, item.payload);
+                      
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                // Badge table name
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: (isDark ? Colors.white12 : Colors.grey[200]),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    _formatTableName(item.targetTable),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.white70 : Colors.black87,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                // Badge operation
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: isDelete 
+                                        ? AppTheme.warningRed.withValues(alpha: 0.1)
+                                        : AppTheme.primaryGreen.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(4),
+                                  ),
+                                  child: Text(
+                                    isDelete ? 'HAPUS' : 'SIMPAN',
+                                    style: TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDelete ? AppTheme.warningRed : AppTheme.primaryGreen,
+                                    ),
+                                  ),
+                                ),
+                                const Spacer(),
+                                // Delete queue item button
+                                IconButton(
+                                  icon: const Icon(Icons.delete_outline, size: 16, color: AppTheme.warningRed),
+                                  onPressed: () => _confirmDeleteQueueItem(item.id),
+                                  tooltip: 'Hapus dari antrean',
+                                  visualDensity: VisualDensity.compact,
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              details,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            if (item.lastError != null)
+                              Container(
+                                margin: const EdgeInsets.only(top: 6),
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.warningRed.withValues(alpha: 0.08),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    const Icon(Icons.warning_amber_rounded, size: 14, color: AppTheme.warningRed),
+                                    const SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        item.lastError!,
+                                        style: const TextStyle(fontSize: 11, color: AppTheme.warningRed),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLogsCard(SyncState state) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final logs = state.logs;
+    final isSyncing = state is SyncInProgress;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.history_rounded, size: 24),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'Log Aktivitas Sinkronisasi',
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                if (isSyncing)
+                  const SizedBox(
+                    width: 14,
+                    height: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (logs.isEmpty)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                child: Center(
+                  child: Text(
+                    'Belum ada riwayat aktivitas sinkronisasi.',
+                    style: TextStyle(color: AppTheme.neutralGrey, fontSize: 13),
+                  ),
+                ),
+              )
+            else
+              Container(
+                constraints: const BoxConstraints(maxHeight: 200),
+                decoration: BoxDecoration(
+                  border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE5E7EB)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Scrollbar(
+                  controller: _logScrollController,
+                  thumbVisibility: true,
+                  child: ListView.separated(
+                    controller: _logScrollController,
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.all(8),
+                    itemCount: logs.length,
+                    separatorBuilder: (_, index) => Divider(height: 1, color: isDark ? Colors.white12 : const Color(0xFFE5E7EB)),
+                    itemBuilder: (context, index) {
+                      final log = logs[index];
+                      IconData icon;
+                      Color color;
+                      String typeLabel;
+
+                      switch (log.type) {
+                        case 'push_table':
+                          icon = Icons.arrow_upward;
+                          color = Colors.orange;
+                          typeLabel = 'Upload';
+                          break;
+                        case 'pull_table':
+                          icon = Icons.arrow_downward;
+                          color = Colors.blue;
+                          typeLabel = 'Download';
+                          break;
+                        case 'push_done':
+                          icon = Icons.cloud_done;
+                          color = AppTheme.primaryGreen;
+                          typeLabel = 'Upload selesai';
+                          break;
+                        case 'pull_done':
+                          icon = Icons.cloud_done;
+                          color = AppTheme.primaryGreen;
+                          typeLabel = 'Download selesai';
+                          break;
+                        case 'error':
+                          icon = Icons.error_outline;
+                          color = AppTheme.warningRed;
+                          typeLabel = 'Error';
+                          break;
+                        default:
+                          icon = Icons.info_outline;
+                          color = AppTheme.neutralGrey;
+                          typeLabel = log.type;
+                      }
+
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+                        child: Row(
+                          children: [
+                            Icon(icon, color: color, size: 16),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    log.tableName != null ? '$typeLabel — ${log.tableName}' : typeLabel,
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                  ),
+                                  Text(
+                                    log.message,
+                                    style: TextStyle(fontSize: 11, color: AppTheme.neutralGrey),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Text(
+                              '${log.timestamp.hour.toString().padLeft(2, '0')}:${log.timestamp.minute.toString().padLeft(2, '0')}:${log.timestamp.second.toString().padLeft(2, '0')}',
+                              style: TextStyle(fontSize: 10, color: AppTheme.neutralGrey),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUtilitasCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Utilitas', style: TextStyle(fontWeight: FontWeight.w600)),
+            const SizedBox(height: 12),
+            // Bersihkan duplikat satuan
+            OutlinedButton.icon(
+              onPressed: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    title: const Text('Bersihkan Duplikat?'),
+                    content: const Text(
+                      'Fungsi ini akan memindai seluruh produk dan menghapus satuan yang namanya dobel.\n\n'
+                      'Satuan yang sudah pernah dipakai di transaksi TIDAK akan dihapus.',
+                    ),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Batal')),
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: TextButton.styleFrom(foregroundColor: Colors.blue),
+                          child: const Text('Lanjutkan')),
+                    ],
+                  ),
+                );
+                if (confirm != true || !mounted) return;
+                
+                showDialog(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => const Center(child: CircularProgressIndicator()),
+                );
+                
+                try {
+                  final repo = sl<ProdukRepository>();
+                  final result = await repo.cleanupDuplicateSatuan();
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'Selesai! Dihapus: ${result.deleted}, Dilindungi: ${result.protected}',
+                      ),
+                      backgroundColor: Colors.blue,
+                    ),
+                  );
+                } catch (e) {
+                  if (!mounted) return;
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Gagal: $e')),
+                  );
+                }
+              },
+              icon: const Icon(Icons.cleaning_services, size: 16),
+              label: const Text('Bersihkan Duplikat Satuan'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmDeleteQueueItem(int id) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Antrean?'),
+        content: const Text(
+            'Apakah Anda yakin ingin menghapus data ini dari antrean sinkronisasi?\n\nPerubahan lokal ini TIDAK akan di-upload ke cloud.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppTheme.warningRed),
+            child: const Text('Hapus'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && mounted) {
+      await _syncService.deleteQueueItem(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Item antrean berhasil dihapus')),
+      );
+    }
+  }
+
+  String _getQueueItemDetails(String targetTable, String payloadStr) {
+    try {
+      final payload = jsonDecode(payloadStr) as Map<String, dynamic>;
+      switch (targetTable) {
+        case 'produk':
+          return 'Nama: ${payload['nama'] ?? '-'}, Satuan: ${payload['satuan'] ?? '-'}';
+        case 'satuan_produk':
+          return 'Nama: ${payload['nama'] ?? '-'}, Konversi: ${payload['konversi'] ?? '-'}';
+        case 'supplier':
+          return 'Nama: ${payload['nama'] ?? '-'}';
+        case 'transaksi':
+          final total = payload['total_harga'] ?? 0;
+          return 'Total Belanja: Rp ${NumberFormat('#,###', 'id_ID').format(total)}';
+        case 'item_transaksi':
+          return 'Produk: ${payload['nama_produk'] ?? '-'}, Qty: ${payload['jumlah'] ?? '-'}';
+        case 'pembelian':
+          final total = payload['total_harga'] ?? 0;
+          return 'Supplier: ${payload['nama_supplier'] ?? '-'}, Total: Rp ${NumberFormat('#,###', 'id_ID').format(total)}';
+        case 'item_pembelian':
+          return 'Produk: ${payload['nama_produk'] ?? '-'}, Qty: ${payload['jumlah'] ?? '-'}';
+        case 'hutang_piutang':
+          final jml = payload['jumlah'] ?? 0;
+          return 'Pelanggan: ${payload['nama_pelanggan'] ?? '-'}, Jumlah: Rp ${NumberFormat('#,###', 'id_ID').format(jml)}';
+        case 'riwayat_stok':
+          return 'Tipe: ${payload['tipe'] ?? '-'}, Jumlah: ${payload['jumlah'] ?? '-'}';
+        case 'notifikasi':
+          return 'Judul: ${payload['judul'] ?? '-'}, Pesan: ${payload['pesan'] ?? '-'}';
+        case 'pending_order':
+          return 'Pelanggan: ${payload['nama_pelanggan'] ?? '-'}';
+        case 'pending_order_item':
+          return 'Produk: ${payload['nama_produk'] ?? '-'}, Qty: ${payload['jumlah'] ?? '-'}';
+        case 'pending_pembelian':
+          return 'Supplier: ${payload['nama_supplier'] ?? '-'}';
+        case 'pending_pembelian_item':
+          return 'Produk: ${payload['nama_produk'] ?? '-'}, Qty: ${payload['jumlah'] ?? '-'}';
+        default:
+          return 'ID: ${payload['id'] ?? '-'}';
+      }
+    } catch (_) {
+      return 'Gagal memproses data';
+    }
+  }
+
+  String _formatTableName(String table) {
+    switch (table) {
+      case 'produk': return 'Produk';
+      case 'satuan_produk': return 'Satuan Produk';
+      case 'supplier': return 'Supplier';
+      case 'supplier_products': return 'Produk Supplier';
+      case 'transaksi': return 'Transaksi Penjualan';
+      case 'item_transaksi': return 'Item Penjualan';
+      case 'pembelian': return 'Pembelian Barang';
+      case 'item_pembelian': return 'Item Pembelian';
+      case 'hutang_piutang': return 'Hutang / Piutang';
+      case 'riwayat_stok': return 'Riwayat Stok';
+      case 'notifikasi': return 'Notifikasi';
+      case 'pending_order': return 'Pesanan Tertunda';
+      case 'pending_order_item': return 'Item Pesanan Tertunda';
+      case 'pending_pembelian': return 'Pembelian Tertunda';
+      case 'pending_pembelian_item': return 'Item Pembelian Tertunda';
+      case 'online_customers': return 'Pelanggan Online';
+      case 'online_orders': return 'Pesanan Online';
+      case 'online_order_items': return 'Item Pesanan Online';
+      default: return table;
+    }
   }
 
   Widget _buildTentang() {

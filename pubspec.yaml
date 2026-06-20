@@ -1,7 +1,7 @@
 name: tokodedypc
 description: "Aplikasi Kasir Toko Sembako - Versi Desktop PC"
 publish_to: 'none'
-version: 1.0.10+0
+version: 1.0.11+0
 
 environment:
   sdk: ^3.11.5
@@ -33,6 +33,7 @@ dependencies:
   # Barcode Scanner (manual input for Windows - no camera)
   # mobile_scanner: ^6.0.7
   shared_preferences: ^2.5.5
+  flutter_secure_storage: ^9.2.4
 
   # Printing (Thermal Printer) — Network (HTTP) only on Windows
   # flutter_blue_plus: ^1.35.3

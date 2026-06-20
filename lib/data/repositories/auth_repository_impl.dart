@@ -1,6 +1,7 @@
 import 'package:injectable/injectable.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'dart:convert';
 
 import '../../domain/entities/user.dart';
@@ -34,7 +35,6 @@ class AuthRepositoryImpl implements AuthRepository {
     final authUser = response.user;
     if (authUser == null) return null;
 
-    // Ambil profile dari Supabase
     final profileData = await _supabase
         .from('profiles')
         .select()
@@ -55,6 +55,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
     await _saveSession(user);
     await _upsertLocalProfile(user);
+    await _backupSupabaseSession();
 
     return user;
   }
@@ -100,6 +101,7 @@ class AuthRepositoryImpl implements AuthRepository {
 
     await _saveSession(user);
     await _upsertLocalProfile(user);
+    await _backupSupabaseSession();
 
     return user;
   }
@@ -207,6 +209,21 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   // ───────────── LOCAL HELPERS ─────────────
+
+  Future<void> _backupSupabaseSession() async {
+    try {
+      final session = _supabase.auth.currentSession;
+      if (session != null) {
+        const storage = FlutterSecureStorage();
+        await storage.write(
+          key: 'supabase_session_backup',
+          value: jsonEncode(session.toJson()),
+        );
+      }
+    } catch (_) {
+      // backup failure is non-critical
+    }
+  }
 
   Future<void> _saveSession(User user) async {
     final hasPin = user.id != null && await _localAuth.hasPin(user.id!);

@@ -1,3 +1,4 @@
+
 import 'package:injectable/injectable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../domain/repositories/auth_repository.dart';
@@ -21,17 +22,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     emit(AuthLoading());
     try {
-      // Validasi session Supabase dulu (cek apakah token masih valid)
       final user = await authRepository.fetchCurrentUser();
       if (user != null) {
         emit(Authenticated(user));
         return;
       }
-    } catch (_) {
-      // Network error — fallback ke cache lokal
-    }
+    } catch (_) {}
 
-    // Fallback: cache lokal (offline mode)
     try {
       final user = authRepository.getCurrentUser();
       if (user != null) {

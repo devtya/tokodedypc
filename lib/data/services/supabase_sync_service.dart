@@ -6,6 +6,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:drift/drift.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:uuid/uuid.dart';
 
 import '../database/app_database.dart';
@@ -59,10 +60,31 @@ class SupabaseSyncService {
   Future<bool> _ensureValidSession() async {
     try {
       final session = _supabase.auth.currentSession;
+
       if (session == null) {
+        // Fallback: coba recover dari FlutterSecureStorage backup
+        debugPrint('[Sync] currentSession null — mencoba recover dari backup...');
+        try {
+          const storage = FlutterSecureStorage();
+          final stored = await storage.read(key: 'supabase_session_backup');
+          if (stored != null && stored.isNotEmpty) {
+            final recovered = await _supabase.auth.recoverSession(stored);
+            if (recovered.session != null) {
+              debugPrint('[Sync] Session BERHASIL di-recover dari backup');
+              return true;
+            }
+          } else {
+            debugPrint('[Sync] Tidak ada backup session');
+          }
+        } catch (recoverError) {
+          debugPrint('[Sync] recoverSession gagal: $recoverError');
+        }
+
         debugPrint('[Sync] No Supabase session — akan antri');
+        await _insertSessionExpiredNotification();
         return false;
       }
+
       // Cek apakah session expired atau mendekati expired (dalam 5 menit)
       final expiresAt = session.expiresAt;
       if (expiresAt != null) {
@@ -71,7 +93,7 @@ class SupabaseSyncService {
         if (expiry.isBefore(fiveMinFromNow)) {
           debugPrint('[Sync] Session mendekati expired, mencoba refresh...');
           final refreshed = await _supabase.auth.refreshSession();
-          if (refreshed != null) {
+          if (refreshed.session != null) {
             debugPrint('[Sync] Session berhasil di-refresh');
             return true;
           }
@@ -84,6 +106,29 @@ class SupabaseSyncService {
       debugPrint('[Sync] Session check error: $e');
       return false;
     }
+  }
+
+  /// Buat notifikasi lokal jika session expired dan tidak bisa di-recover
+  Future<void> _insertSessionExpiredNotification() async {
+    try {
+      // Hindari spam — cek apakah notifikasi serupa sudah ada dalam 24 jam
+      final existing = await (_db.select(_db.notifikasiTable)
+        ..where((t) => t.tipe.equals('SYNC_ERROR'))
+        ..where((t) => t.createdAt.isBiggerThanValue(
+          DateTime.now().subtract(const Duration(hours: 24))))
+      ).get();
+
+      if (existing.isNotEmpty) return;
+
+      await _db.into(_db.notifikasiTable).insert(NotifikasiTableCompanion.insert(
+        id: _uuid.v4(),
+        judul: 'Sinkronisasi Cloud Terputus',
+        pesan: 'Session Supabase telah berakhir. Buka Pengaturan → Sinkronisasi Cloud → '
+            'login ulang dengan email & password untuk mengaktifkan sync kembali.',
+        tipe: const Value('SYNC_ERROR'),
+        createdAt: Value(DateTime.now()),
+      ));
+    } catch (_) {}
   }
 
   /// Push: upsert record ke Supabase atau antri jika offline
@@ -248,10 +293,13 @@ class SupabaseSyncService {
 
   /// Initialize realtime listener for Supabase
   void initRealtimeListeners() {
-    if (_isRealtimeInitialized) return;
+    if (_isRealtimeInitialized) {
+      debugPrint('${DateTime.now()} [Realtime] initRealtimeListeners skipped (already initialized)');
+      return;
+    }
     _isRealtimeInitialized = true;
 
-    debugPrint('[Realtime] Initiating subscription...');
+    debugPrint('${DateTime.now()} [Realtime] Initiating subscription...');
 
     _supabase
         .channel('public:online_orders')
@@ -261,7 +309,7 @@ class SupabaseSyncService {
             table: 'online_orders',
             callback: (payload) async {
               final newRecord = payload.newRecord;
-              debugPrint('[Realtime] INSERT detected: ${newRecord['id']} status=${newRecord['status']}');
+              debugPrint('${DateTime.now()} [Realtime] INSERT detected: ${newRecord['id']} status=${newRecord['status']}');
               if (newRecord['status'] == 'pending' || newRecord['status'] == 'shipped') {
                 final orderId = newRecord['id'] as String;
                 final customerId = newRecord['customer_id'] as String;
@@ -329,14 +377,14 @@ class SupabaseSyncService {
             })
         .subscribe((status, error) {
           if (error != null) {
-            debugPrint('[Realtime] Subscription error: $error');
+            debugPrint('${DateTime.now()} [Realtime] Subscription error: $error');
             // Auto-retry setelah 10 detik
             _isRealtimeInitialized = false;
             Future.delayed(const Duration(seconds: 10), () {
               initRealtimeListeners();
             });
           } else {
-            debugPrint('[Realtime] Subscription status: $status');
+            debugPrint('${DateTime.now()} [Realtime] Subscription status: $status');
           }
         });
   }
@@ -449,7 +497,9 @@ class SupabaseSyncService {
 
   /// Flush antrian operasi yang belum berhasil di-sync
   Future<int> flushQueue() async {
-    if (!(await isOnline)) return 0;
+    if (!(await isOnline)) {
+      return 0;
+    }
 
     final sessionValid = await _ensureValidSession();
     if (!sessionValid) {
@@ -479,7 +529,6 @@ class SupabaseSyncService {
             .go();
         flushed++;
       } catch (e) {
-        debugPrint('Failed to flush queue item ${item.id} for table ${item.targetTable}: $e');
         // Hitung retry via payload JSON
         try {
           final payload = jsonDecode(item.payload) as Map<String, dynamic>;
@@ -522,6 +571,39 @@ class SupabaseSyncService {
   Future<int> get pendingQueueCount async {
     final items = await _db.select(_db.pendingSyncQueueTable).get();
     return items.length;
+  }
+
+  /// Watch pending sync queue
+  Stream<List<PendingSyncQueueTableData>> watchPendingQueue() {
+    return (_db.select(_db.pendingSyncQueueTable)
+          ..orderBy([
+            (t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)
+          ]))
+        .watch();
+  }
+
+  /// Delete a single queue item
+  Future<void> deleteQueueItem(int id) async {
+    await (_db.delete(_db.pendingSyncQueueTable)..where((t) => t.id.equals(id))).go();
+  }
+
+  /// Reset retry count for all queue items so they can be retried on next sync
+  Future<void> resetQueueRetryCounts() async {
+    final queue = await _db.select(_db.pendingSyncQueueTable).get();
+    for (final item in queue) {
+      try {
+        final payload = jsonDecode(item.payload) as Map<String, dynamic>;
+        if (payload.containsKey('_retryCount')) {
+          payload.remove('_retryCount');
+        }
+        await (_db.update(_db.pendingSyncQueueTable)
+              ..where((t) => t.id.equals(item.id)))
+            .write(PendingSyncQueueTableCompanion(
+              payload: Value(jsonEncode(payload)),
+              lastError: const Value(null),
+            ));
+      } catch (_) {}
+    }
   }
 
   /// Push semua produk lokal ke Supabase secara paksa (berguna untuk migrasi schema atau force sync)

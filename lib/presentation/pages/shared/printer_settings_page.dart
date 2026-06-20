@@ -7,7 +7,6 @@ import '../../../core/di/injection.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/services/printer_service.dart';
 import '../../../data/services/printer_settings.dart';
-import '../../../data/services/windows_usb_printer_service.dart';
 
 class PrinterSettingsPage extends StatefulWidget {
   const PrinterSettingsPage({super.key});
@@ -27,7 +26,7 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
   String _status = '';
   bool _printerConnected = false;
   
-  List<PrinterDevice> _usbPrinters = [];
+  final List<PrinterDevice> _usbPrinters = [];
   PrinterDevice? _selectedUsbPrinter;
   StreamSubscription<PrinterDevice>? _printerSubscription;
 
@@ -229,7 +228,7 @@ class _PrinterSettingsPageState extends State<PrinterSettingsPage> {
                           items: _usbPrinters.map((device) {
                             return DropdownMenuItem(
                               value: device,
-                              child: Text(device.name ?? 'Unknown Device'),
+                              child: Text(device.name),
                             );
                           }).toList(),
                           onChanged: (val) {

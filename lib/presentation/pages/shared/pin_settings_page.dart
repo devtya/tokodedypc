@@ -73,6 +73,8 @@ class _PinSettingsPageState extends State<PinSettingsPage> {
           }
 
           return ListView(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16),
             children: [
               Card(

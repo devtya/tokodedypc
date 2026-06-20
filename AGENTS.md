@@ -58,6 +58,7 @@ lib/
 - **Auth menggunakan Supabase Auth (Hybrid)**: Kredensial login (email & password) ditangani dan divalidasi penuh oleh Supabase Auth (online). Password tidak disimpan di lokal. Profil pengguna tersimpan di tabel `profiles` Supabase dan akan di-cache secara lokal ke tabel `user` Drift bersamaan dengan *session token* (di `SharedPreferences`). Ini memungkinkan aplikasi tetap bisa dibuka tanpa internet (offline) asalkan sesi lokal masih ada (sistem *Cloud Recovery Login*).
 - **Offline-first (V2 Sync)**: Database lokal (Drift) tetap menjadi tumpuan utama operasional harian. Sinkronisasi menggunakan model *direct upsert* per-tabel ke Supabase (tidak ada lagi `SyncRecordTable` atau UUID mapping JSON blob dari V1).
 - **Mekanisme Sync**: Data baru/berubah akan di-push (upsert) ke Supabase. Jika *offline*, aksi akan diantrikan ke `pending_sync_queue_table`. Saat `pull()`, data dari device lain diunduh berdasarkan parameter `updated_at` atau `created_at`.
+- **Session Backup & Recovery (FlutterSecureStorage)**: Karena aplikasi menggunakan PIN login harian (tanpa re-autentikasi Supabase), session Supabase dapat expired saat aplikasi tidak aktif. Untuk mengatasinya, session disimpan sebagai JSON di `FlutterSecureStorage` (Windows Credential Manager / enkripsi platform) setiap kali login berhasil (`_backupSupabaseSession()` di `auth_repository_impl.dart`). Saat `_ensureValidSession()` di `supabase_sync_service.dart` menemukan `currentSession == null`, ia akan mencoba `recoverSession()` dari backup tersebut sebelum menyerah. Jika semua recovery gagal, notifikasi `SYNC_ERROR` ditambahkan ke tabel notifikasi lokal.
 - Konfigurasi Supabase via `--dart-define=SUPABASE_URL=... --dart-define=SUPABASE_ANON_KEY=...`
 - File `supabase_setup.sql` / `supabase_setup_v2.sql` untuk setup tabel di project Supabase.
 - Defined in `lib/data/database/tables/`, aggregated in `lib/data/database/app_database.dart`
@@ -92,6 +93,32 @@ lib/
 - **i18n & Localization**: WAJIB menghindari teks *hardcoded* pada UI (terutama di dalam `Text()`, `SnackBar`, dll). Semua teks bahasa yang digunakan di halaman antarmuka harus didaftarkan melalui file `lib/i18n/strings.i18n.json` dan digenerate menggunakan `dart run slang`.
 - **Desktop Navigation / Sidebar**: Semua menu/halaman tidak boleh melakukan `Navigator.push` ke rute global untuk membuka layar penuh (kecuali untuk dialog/popup). Sidebar utama (`HomePage` sidebar) WAJIB selalu terlihat dan bisa diakses. Jika sebuah menu memiliki sub-halaman (misalnya Pembelian ke PembelianForm), WAJIB menggunakan **Local Navigator** (`Navigator` mandiri dengan GlobalKey di dalam konten halaman tersebut) agar navigasinya terkurung di sebelah kanan sidebar.
 
+## Auth Flow Architecture — `_AppShell` (WARNING — DO NOT BREAK)
+
+```
+MaterialApp(home: _AppShell)  ← NEVER replaced via pushAndRemoveUntil
+  └─ _AppShell (StatefulWidget, alive FOREVER)
+       ├─ AuthInitial    → CircularProgressIndicator
+       ├─ Authenticated  → PinGate(user, onVerified:)   (jika !_pinVerified)
+       │                   └─ onVerified → _AppShell._pinVerified = true
+       │                                      render HomePage langsung
+       ├─ Authenticated  → HomePage                     (jika _pinVerified)
+       └─ Unauthenticated→ LoginPage (reset _pinVerified)
+```
+
+### Aturan WAJIB — JANGAN PERNAH DILANGGAR:
+1. **`_AppShell` TIDAK BOLEH di-unmount.** Jangan pernah menggunakan `Navigator.pushAndRemoveUntil` untuk mengganti halaman yang di-render oleh `_AppShell` — karena itu akan membuang `_AppShell` dari widget tree dan membatalkan `StreamSubscription` ke `AuthBloc`. Setelah `_AppShell` hilang, tidak ada mekanisme untuk mendeteksi `Authenticated` pada login berikutnya, menyebabkan UI stuck di LoginPage selamanya.
+2. **`_AppShell` mengendalikan semua transisi halaman utama** (LoginPage ↔ PinGate ↔ HomePage) via internal state `_pinVerified` — bukan via Navigator route.
+3. **`PinGate` hanya memanggil `widget.onVerified?.call()`** — jangan pernah menambahkan `Navigator.pushAndRemoveUntil` atau `Navigator.pushReplacement` di dalam `PinGate` atau `PinVerifyPage`.
+4. **`HomePage` TIDAK BOLEH melakukan navigasi global** saat logout. Cukup dispatch `LogoutEvent` ke `AuthBloc`. `_AppShell` akan merespon `Unauthenticated` dan otomatis menampilkan `LoginPage`.
+5. **Logging `[AppShell]` di `main.dart` dan `[PinGate]` di `pin_gate.dart` WAJIB dipertahankan** — ini adalah satu-satunya cara untuk mendiagnosis auth flow jika terjadi regresi.
+6. **Cold start flow**: AuthBloc `CheckAuthStatus` (emitted di BlocProvider `create`) → `Authenticated` → PinGate → PIN verified → `_pinVerified=true` → HomePage.
+7. **Logout-login loop**: `_AppShell` tetap hidup sepanjang siklus (tidak pernah di-dispose). `StreamSubscription` ke AuthBloc tetap aktif.
+
+### Yang terjadi jika aturan ini dilanggar:
+- Login kedua setelah logout → `_AppShell` sudah di-dispose → `Authenticated` tidak ada penerima → UI stuck di LoginPage.
+- **Root cause** (sudah pernah terjadi, Bug Fixes Log: "Login Flow — Stuck di LoginPage setelah logout-login") — jangan ulangi.
+
 
 ## Pembelian Pages Layout Rules (LOCKED — DO NOT CHANGE)
 
@@ -125,7 +152,7 @@ Gunakan notasi berikut untuk menyebut huruf versi yang ingin dinaikkan:
 - **y** — Minor (fitur baru, reset z ke 0)
 - **z** — Patch (bug fix / perbaikan kecil)
 
-Current: **1.0.10** (tag: v1.0.10)
+Current: **1.0.11** (tag: v1.0.11)
 
 ## Log Konvensi
 
@@ -134,6 +161,12 @@ Current: **1.0.10** (tag: v1.0.10)
 > - Fitur: `### Fitur: <nama>` dengan deskripsi, cara pakai, files, date
 
 ## Bug Fixes Log
+
+### Bug: Login Flow — Stuck di LoginPage setelah logout-login (Arsitektur _AppShell)
+- **Root cause**: `PinGate.onVerified` memanggil `Navigator.pushAndRemoveUntil` yang menghancurkan route awal (`home:` berisi `_AppShell`). Setelah `_AppShell` di-dispose, `StreamSubscription` ke `AuthBloc` dibatalkan. Login kedua → `Authenticated` dipancarkan tapi tidak ada yang menerima → UI stuck di LoginPage selamanya.
+- **Fix**: Refactor arsitektur `_AppShell`: (1) `_AppShell` sekarang memiliki `_pinVerified` flag internal dan mengelola transisi LoginPage↔PinGate↔HomePage via state `setState`, bukan Navigator route. (2) `PinGate` menerima `VoidCallback? onVerified` dan hanya memanggil callback, bukan `pushAndRemoveUntil`. (3) `HomePage` tidak lagi menggunakan `BlocListener<AuthBloc>` dengan `pushAndRemoveUntil` untuk logout — cukup dispatch `LogoutEvent`, dan `_AppShell` yang merespon `Unauthenticated` dengan menampilkan LoginPage. (4) Debug logging `[AppShell]` dipertahankan sebagai guard rail.
+- **Files**: `lib/main.dart`, `lib/presentation/pages/shared/pin_gate.dart`, `lib/presentation/pages/shared/home_page.dart`
+- **Date**: 2026-06-20
 
 ### Bug: Hapus Produk — Layar blank hitam
 - **Root cause**: `Navigator.pop(context)` dipanggil langsung di `_confirmDelete` dan `_buildBottomBar`, yang mana akan menghilangkan seluruh struktur navigasi jika produk sedang dirender sebagai `SidePanel` mandiri tanpa route Navigator baru (navigasi lokal). Akibatnya, seluruh layout tertutup dan hanya menyisakan layar hitam.
@@ -244,6 +277,12 @@ Current: **1.0.10** (tag: v1.0.10)
 - **Date**: 2026-05-25
 
 ## Features Log
+
+### Fitur: Redesain Halaman Pengaturan & Transparansi Antrean Sync
+- **Deskripsi**: (1) Menyatukan seluruh sub-halaman Pengaturan (Tampilan, Printer, Pengguna, PIN & Keamanan, Sinkronisasi, dan Tentang Aplikasi) ke dalam satu halaman panjang yang bisa di-scroll secara mulus. Sidebar navigasi kini mensinkronkan sorotannya secara real-time berdasarkan posisi scroll layar, serta mendukung aksi klik untuk melompat (scroll) ke section terkait. (2) Menambahkan detil transparansi antrean data sinkronisasi cloud (`pending_sync_queue_table`) yang menampilkan jenis tabel, aksi (simpan/hapus), detail data (seperti nama produk, nama pelanggan, total belanja), tombol hapus untuk membersihkan item antrean yang stuck, serta pesan error riil jika proses push ke cloud gagal. (3) Menambahkan log aktivitas sinkronisasi upload/download secara real-time yang langsung disematkan pada halaman Pengaturan, serta fungsionalitas tombol refresh yang secara otomatis meriset counter percobaan sync dari item-item yang tertahan di antrean.
+- **Cara pakai**: Masuk ke Pengaturan. Anda dapat melakukan scroll langsung untuk menjelajahi semua opsi atau mengetuk sidebar di sebelah kiri. Pada bagian Sinkronisasi Cloud, detail antrean data akan muncul di kartu "Antrean Data" jika ada data lokal yang belum ter-push, lengkap dengan deskripsi error jika sinkronisasi gagal.
+- **Files**: `lib/data/services/supabase_sync_service.dart`, `lib/presentation/blocs/sync/sync_bloc.dart`, `lib/presentation/pages/shared/pin_settings_page.dart`, `lib/presentation/pages/shared/settings_page.dart`
+- **Date**: 2026-06-20
 
 ### Fitur: Ubah & Tambah Satuan Inline + Validasi Harga Jual di Pembelian
 - **Deskripsi**: (1) Memungkinkan kasir untuk mengubah dan menambah satuan produk baru langsung dari dalam keranjang form pembelian (bottom sheet). Jika user menekan "+ Tambah Satuan", data satuan baru langsung disimpan ke database (via `ProdukRepository`) dan terpilih otomatis di form. (2) Validasi tambahan: jika user memproses pembelian barang yang menggunakan satuan dengan harga jual 0 (karena baru ditambahkan atau belum diset), akan muncul peringatan validasi sebelum pembelian disimpan.
@@ -551,3 +590,9 @@ Current: **1.0.10** (tag: v1.0.10)
 - **Fix**: Ganti hardcoded 7:5 jadi rasio dinamis — `is80mm ? 6:6 : 7:5` — sehingga di 80mm kolom angka mendapat porsi 6/12 sama dengan baris Total, sementara di 58mm tetap 7:5 (tidak regresi).
 - **Files**: `lib/data/services/windows_usb_printer_service.dart`
 - **Date**: 2026-06-19
+
+### Bug: Sync Silent Failure — Session expired tidak terdeteksi karena PIN login + Schema Supabase mismatch
+- **Root cause**: (1) PIN login harian tidak pernah menyentuh Supabase Auth — session access token expired ~1 jam tanpa refresh, menyebabkan `_ensureValidSession()` selalu return false tanpa fallback recovery. (2) `SyncBloc` mengabaikan `flushQueue()` return 0 → tetap emit `SyncSuccess` tanpa error. (3) 4 item queue gagal push karena kolom `diskon_global` (transaksi), `nama_produk` dan `created_at` (item_transaksi) tidak ada di schema Supabase.
+- **Fix**: (1) Tambah `_backupSupabaseSession()` di `auth_repository_impl.dart` untuk menyimpan session ke FlutterSecureStorage saat login. (2) `_ensureValidSession()` coba `recoverSession()` dari backup saat `currentSession == null`. (3) Tambah `_insertSessionExpiredNotification()` untuk notifikasi error ke user. (4) SQL ALTER TABLE ditambahkan ke schema Supabase via dashboard.
+- **Files**: `lib/data/services/supabase_sync_service.dart`, `lib/data/repositories/auth_repository_impl.dart`, `pubspec.yaml` (tambah `flutter_secure_storage`)
+- **Date**: 2026-06-20
