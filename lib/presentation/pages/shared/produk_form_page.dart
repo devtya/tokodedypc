@@ -17,6 +17,7 @@ import '../../../domain/usecases/produk/get_produk_by_barcode.dart';
 import '../../blocs/produk/produk_bloc.dart';
 import '../../blocs/produk/produk_event.dart';
 import '../../blocs/produk/produk_state.dart';
+import '../../../i18n/strings.g.dart';
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────────
 
@@ -245,7 +246,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
   ColorScheme get _colors => _theme.colorScheme;
 
   String get _displayCode =>
-      _isEditing ? (_currentProduk!.barcode ?? _currentProduk!.nama) : 'BARU';
+      _isEditing ? (_currentProduk!.barcode ?? _currentProduk!.nama) : t.product.form.placeholder_name;
 
   Future<void> _pickImage() async {
     showModalBottomSheet(
@@ -454,7 +455,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
   void _addUnit() {
     final newUnit = _UnitItem(
       id: _nextUnitId++,
-      nama: 'BARU',
+      nama: t.product.form.placeholder_name,
       isBase: false,
       konversi: 1.0,
       hargaBeli: 0,
@@ -983,7 +984,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _sectionLabel('SATUAN DASAR'),
+        _sectionLabel(t.product.form.type_base),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
@@ -1032,7 +1033,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
   // ── Unit List (multi-satuan mode) ──
   Widget _buildUnitList() {
     final children = <Widget>[
-      _sectionLabel('DAFTAR SATUAN (${_units.length})'),
+      _sectionLabel(t.product.form.section_units.replaceFirst('{count}', '${_units.length}')),
       const SizedBox(height: 12),
     ];
 
@@ -1049,6 +1050,8 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
             setState(() => _units[i] = unit.copyWith(hargaJual: v));
           },
           onDelete: unit.isBase ? null : () => _deleteUnit(unit.id),
+          onTapName: () => _editUnit(unit),
+          onTapKonversi: () => _editUnit(unit),
         ),
       );
 
@@ -1076,7 +1079,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
                       Icon(Icons.add, color: _colors.primary, size: 16),
                       SizedBox(width: 4),
                       Text(
-                        'Tambah Satuan',
+                        t.product.form.btn_add_unit,
                         style: TextStyle(
                           color: _colors.primary,
                           fontSize: 12,
@@ -1110,8 +1113,8 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
           color: AppTheme.info,
           size: 16,
         ),
-        label: const Text(
-          'Hitung Harga Pokok Dasar',
+        label: Text(
+          t.product.form.btn_calc_cost,
           style: TextStyle(color: AppTheme.info, fontWeight: FontWeight.w700),
         ),
         style: OutlinedButton.styleFrom(
@@ -1186,7 +1189,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
                   ),
                 ),
                 child: Text(
-                  'Batal',
+                  t.product.form.btn_cancel,
                   style: TextStyle(
                     color: _colors.onSurface.withValues(alpha: 0.7),
                     fontWeight: FontWeight.w700,
@@ -1217,7 +1220,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
                         ),
                       )
                     : Text(
-                        _saved ? '✓ Tersimpan!' : 'Simpan',
+                        _saved ? '✓ Tersimpan!' : t.product.form.btn_save,
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
@@ -1364,12 +1367,12 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Produk Permanen?'),
-        content: const Text('Apakah Anda yakin ingin menghapus produk ini secara permanen? Aksi ini tidak dapat dibatalkan.'),
+        title: Text(t.product.dialog_delete_perm_title),
+        content: Text(t.product.dialog_delete_perm_body),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: Text(t.product.btn_cancel),
           ),
           TextButton(
             onPressed: () {
@@ -1378,7 +1381,7 @@ class _ProdukFormPageState extends State<ProdukFormPage> {
               context.read<ProdukBloc>().add(DeleteProdukEvent(produk.id!));
             },
             style: TextButton.styleFrom(foregroundColor: AppTheme.warningRed),
-            child: const Text('Hapus Permanen'),
+            child: Text(t.product.btn_delete_perm),
           ),
         ],
       ),
@@ -1412,7 +1415,7 @@ class _UnitItem {
   double get laba => hargaJual - hargaBeli;
   double get labaPct => hargaBeli > 0 ? (laba / hargaBeli) * 100 : 0;
 
-  String get jnsSatuan => isBase ? 'Satuan Dasar' : 'Konversi';
+  String get jnsSatuan => isBase ? t.product.form.type_base : t.product.form.label_conversion;
 
   _UnitItem copyWith({
     String? nama,
@@ -1442,12 +1445,16 @@ class _UnitCard extends StatelessWidget {
   final ValueChanged<double>? onHargaPokokChanged;
   final ValueChanged<double>? onHargaJualChanged;
   final VoidCallback? onDelete;
+  final VoidCallback? onTapName;
+  final VoidCallback? onTapKonversi;
 
   const _UnitCard({
     required this.unit,
     this.onHargaPokokChanged,
     this.onHargaJualChanged,
     this.onDelete,
+    this.onTapName,
+    this.onTapKonversi,
   });
 
   void _editPrice(
@@ -1484,7 +1491,7 @@ class _UnitCard extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.pop(ctx),
             child: Text(
-              'Batal',
+              t.product.form.btn_cancel,
               style: TextStyle(color: colors.onSurface.withValues(alpha: 0.7)),
             ),
           ),
@@ -1494,7 +1501,7 @@ class _UnitCard extends StatelessWidget {
               if (val != null) onSave?.call(val);
               Navigator.pop(ctx);
             },
-            child: Text('Simpan', style: TextStyle(color: colors.primary)),
+            child: Text(t.product.form.btn_save, style: TextStyle(color: colors.primary)),
           ),
         ],
       ),
@@ -1526,27 +1533,30 @@ class _UnitCard extends StatelessWidget {
             // Top row
             Row(
               children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: unit.isBase
-                        ? colors.primary
-                        : colors.secondaryContainer,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    unit.nama.toUpperCase(),
-                    style: TextStyle(
+                GestureDetector(
+                  onTap: onTapName,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
                       color: unit.isBase
-                          ? colors.onPrimary
-                          : colors.onSecondaryContainer,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 15,
-                      fontFamily: 'monospace',
-                      letterSpacing: 1,
+                          ? colors.primary
+                          : colors.secondaryContainer,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      unit.nama.toUpperCase(),
+                      style: TextStyle(
+                        color: unit.isBase
+                            ? colors.onPrimary
+                            : colors.onSecondaryContainer,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        fontFamily: 'monospace',
+                        letterSpacing: 1,
+                      ),
                     ),
                   ),
                 ),
@@ -1564,11 +1574,14 @@ class _UnitCard extends StatelessWidget {
                           fontFamily: 'monospace',
                         ),
                       ),
-                      Text(
-                        'Konversi: ${unit.konversi.toStringAsFixed(2)}',
-                        style: TextStyle(
-                          color: colors.onSurface.withValues(alpha: 0.7),
-                          fontSize: 11,
+                      GestureDetector(
+                        onTap: onTapKonversi,
+                        child: Text(
+                          t.product.form.conversion_text.replaceFirst('{value}', unit.konversi.toStringAsFixed(2)),
+                          style: TextStyle(
+                            color: colors.onSurface.withValues(alpha: 0.7),
+                            fontSize: 11,
+                          ),
                         ),
                       ),
                     ],
@@ -1586,7 +1599,7 @@ class _UnitCard extends StatelessWidget {
                       border: Border.all(color: colors.primary),
                     ),
                     child: Text(
-                      'BASE',
+                      t.product.form.badge_base,
                       style: TextStyle(
                         color: colors.primary,
                         fontSize: 9,
@@ -1631,12 +1644,12 @@ class _UnitCard extends StatelessWidget {
                 GestureDetector(
                   onTap: () => _editPrice(
                     context,
-                    'Harga Pokok',
+                    t.product.form.dialog_cost_title,
                     unit.hargaBeli,
                     onHargaPokokChanged,
                   ),
                   child: _InfoCell(
-                    label: 'HARGA POKOK',
+                    label: t.product.form.label_cost,
                     value: 'Rp ${formatRp(unit.hargaBeli)}',
                     highlight: true,
                   ),
@@ -1644,23 +1657,23 @@ class _UnitCard extends StatelessWidget {
                 GestureDetector(
                   onTap: () => _editPrice(
                     context,
-                    'Harga Jual',
+                    t.product.form.dialog_sell_title,
                     unit.hargaJual,
                     onHargaJualChanged,
                   ),
                   child: _InfoCell(
-                    label: 'HARGA JUAL',
+                    label: t.product.form.label_sell,
                     value: 'Rp ${formatRp(unit.hargaJual)}',
                     highlight: true,
                     accent: unit.isBase ? colors.primary : colors.primary,
                   ),
                 ),
                 _InfoCell(
-                  label: 'KONVERSI',
+                  label: t.product.form.label_conversion,
                   value: unit.konversi.toStringAsFixed(2),
                 ),
                 _InfoCell(
-                  label: 'LABA',
+                  label: t.product.form.label_profit,
                   value:
                       'Rp ${formatRp(unit.laba)} (${unit.labaPct.toStringAsFixed(1)}%)',
                   accent: unit.laba >= 0 ? colors.primary : colors.error,
@@ -1865,7 +1878,7 @@ class _EditUnitSheetState extends State<_EditUnitSheet> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'Edit Satuan',
+                  t.product.form.edit_title,
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
@@ -1894,10 +1907,10 @@ class _EditUnitSheetState extends State<_EditUnitSheet> {
               ],
             ),
             const SizedBox(height: 20),
-            _field('Nama Satuan', _namaCtrl, uppercase: true),
-            _field('Konversi', _konversiCtrl, numeric: true),
-            _field('Harga Pokok (Rp)', _hargaPokokCtrl, numeric: true),
-            _field('Harga Jual (Rp)', _hargaJualCtrl, numeric: true),
+            _field(t.product.form.unit_name_hint, _namaCtrl, uppercase: true),
+            _field(t.product.form.conversion_hint, _konversiCtrl, numeric: true),
+            _field(t.product.form.cost_hint, _hargaPokokCtrl, numeric: true),
+            _field(t.product.form.sell_hint, _hargaJualCtrl, numeric: true),
             const SizedBox(height: 4),
 
             // Laba preview
@@ -1917,7 +1930,7 @@ class _EditUnitSheetState extends State<_EditUnitSheet> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Laba',
+                    t.product.form.label_laba,
                     style: TextStyle(
                       color: colors.onSurface.withValues(alpha: 0.45),
                       fontSize: 12,
@@ -1950,7 +1963,7 @@ class _EditUnitSheetState extends State<_EditUnitSheet> {
                   elevation: 0,
                 ),
                 child: Text(
-                  'Simpan Satuan',
+                  t.product.form.btn_save_unit,
                   style: TextStyle(
                     color: colors.onPrimary,
                     fontWeight: FontWeight.w800,

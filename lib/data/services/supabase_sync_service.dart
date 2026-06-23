@@ -217,7 +217,10 @@ class SupabaseSyncService {
     void Function(String table, int count)? onTablePulled,
     bool force = false,
   }) async {
-    final lastSync = _prefs.getString(_lastSyncKey) ?? '1970-01-01T00:00:00Z';
+    final raw = _prefs.getString(_lastSyncKey) ?? '1970-01-01T00:00:00Z';
+    final lastSync = (!raw.contains('Z') && !raw.contains('+'))
+        ? '1970-01-01T00:00:00Z'
+        : raw;
     final pulledTables = <String>[];
 
     for (final table in _pullOrder) {
@@ -249,16 +252,20 @@ class SupabaseSyncService {
         } else {
           query = query.gte('created_at', lastSync).order('created_at');
         }
+        debugPrint('[Pull Debug] $table: lastSync=$lastSync, force=$force');
         final rows = await query;
+        debugPrint('[Pull Debug] $table: rows returned=${(rows as List).length}');
 
         if ((rows as List).isEmpty) continue;
         await _applyPulledRows(table, rows.cast<Map<String, dynamic>>());
         pulledTables.add(table);
         onTablePulled?.call(table, rows.length);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('[Pull Debug] $table: ERROR — $e');
+      }
     }
 
-    await _prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
+    await _prefs.setString(_lastSyncKey, DateTime.now().toUtc().toIso8601String());
     return pulledTables;
   }
 
@@ -484,7 +491,7 @@ class SupabaseSyncService {
       }
     } catch (_) {}
 
-    await _prefs.setString(_lastSyncKey, DateTime.now().toIso8601String());
+    await _prefs.setString(_lastSyncKey, DateTime.now().toUtc().toIso8601String());
     await _prefs.setBool('initial_sync_done_v2', true);
   }
 

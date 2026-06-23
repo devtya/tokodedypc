@@ -18,6 +18,7 @@ import 'produk_form_page.dart';
 import 'stok_page.dart';
 import '../../blocs/auth/auth_bloc.dart';
 import '../../blocs/auth/auth_state.dart';
+import '../../../i18n/strings.g.dart';
 
 String _formatRp(double val) {
   final intPart = val.toInt().toString();
@@ -193,39 +194,12 @@ class _ProdukPageState extends State<ProdukPage> {
         final isAdmin = authState is Authenticated && authState.user.isOwner;
 
         return Scaffold(
-          appBar: AppBar(
-            title: const Text('Daftar Produk'),
-            actions: [
-              const SyncIndicator(),
-              const SizedBox(width: 8),
-              if (isAdmin) ...[
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                  ),
-                  icon: const Icon(Icons.inventory_2_outlined, size: 18),
-                  label: const Text('Stok Minimum'),
-                  onPressed: () => _openGlobalStockSettings(),
-                ),
-                const SizedBox(width: 12),
-                if (_selectedIds.isEmpty)
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                    ),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Tambah Produk'),
-                    onPressed: () => _openForm(),
-                  ),
-                const SizedBox(width: 16),
-              ],
-            ],
-          ),
           body: Row(
             children: [
               Expanded(
                 child: Column(
                   children: [
+                    _buildTopBar(isAdmin),
                     _buildSearchBar(),
                     _buildFilterRow(isAdmin),
                     Expanded(
@@ -259,7 +233,7 @@ class _ProdukPageState extends State<ProdukPage> {
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeInOut,
-                width: _showSidePanel ? MediaQuery.of(context).size.width * 0.38 : 0,
+                width: _showSidePanel ? (MediaQuery.of(context).size.width * 0.38).clamp(360.0, 480.0) : 0,
                 decoration: BoxDecoration(
                   border: Border(left: BorderSide(color: Theme.of(context).dividerColor)),
                   boxShadow: [
@@ -284,13 +258,45 @@ class _ProdukPageState extends State<ProdukPage> {
     );
   }
 
+  Widget _buildTopBar(bool isAdmin) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Row(
+        children: [
+          const SyncIndicator(),
+          const Spacer(),
+          if (isAdmin) ...[
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              ),
+              icon: const Icon(Icons.inventory_2_outlined, size: 18),
+              label: Text(t.product.stock_minimum),
+              onPressed: () => _openGlobalStockSettings(),
+            ),
+            const SizedBox(width: 12),
+            if (_selectedIds.isEmpty)
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                ),
+                icon: const Icon(Icons.add, size: 18),
+                label: Text(t.product.add_product),
+                onPressed: () => _openForm(),
+              ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildSearchBar() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: TextField(
         controller: _searchController,
         decoration: InputDecoration(
-          hintText: 'Cari produk...',
+          hintText: t.product.search_hint,
           prefixIcon: const Icon(Icons.search),
           suffixIcon: Row(
             mainAxisSize: MainAxisSize.min,
@@ -324,8 +330,8 @@ class _ProdukPageState extends State<ProdukPage> {
             width: 180,
             child: DropdownButtonFormField<String>(
               initialValue: _selectedKategori ?? 'Semua',
-              decoration: const InputDecoration(
-                labelText: 'Kategori',
+              decoration: InputDecoration(
+                labelText: t.product.category_label,
                 contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 isDense: true,
               ),
@@ -343,11 +349,11 @@ class _ProdukPageState extends State<ProdukPage> {
           ),
           const SizedBox(width: 12),
           SegmentedButton<_StockFilter>(
-            segments: const [
-              ButtonSegment(value: _StockFilter.all, label: Text('Semua')),
-              ButtonSegment(value: _StockFilter.lowStock, label: Text('Stok Tipis')),
-              ButtonSegment(value: _StockFilter.outOfStock, label: Text('Habis')),
-              ButtonSegment(value: _StockFilter.archived, label: Text('Arsip')),
+            segments: [
+              ButtonSegment(value: _StockFilter.all, label: Text(t.product.filter_all)),
+              ButtonSegment(value: _StockFilter.lowStock, label: Text(t.product.filter_low_stock)),
+              ButtonSegment(value: _StockFilter.outOfStock, label: Text(t.product.filter_out_of_stock)),
+              ButtonSegment(value: _StockFilter.archived, label: Text(t.product.filter_archived)),
             ],
             selected: {_stockFilter},
             onSelectionChanged: (val) {
@@ -361,7 +367,7 @@ class _ProdukPageState extends State<ProdukPage> {
           ),
           const Spacer(),
           Text(
-            '${_filteredProducts.length} produk',
+            t.product.count_format.replaceFirst('{count}', '${_filteredProducts.length}'),
             style: const TextStyle(fontSize: 12, color: Colors.grey),
           ),
         ],
@@ -378,8 +384,8 @@ class _ProdukPageState extends State<ProdukPage> {
       return Center(
         child: Text(
           _searchController.text.isNotEmpty
-              ? 'Produk "${_searchController.text}" tidak ditemukan'
-              : 'Belum ada produk',
+              ? t.product.not_found.replaceFirst('{query}', _searchController.text)
+              : t.product.empty,
           style: TextStyle(color: AppTheme.neutralGrey),
         ),
       );
@@ -598,7 +604,7 @@ class _ProdukPageState extends State<ProdukPage> {
       child: Row(
         children: [
           Text(
-            '${_selectedIds.length} dipilih',
+            t.product.batch_action.replaceFirst('{count}', '${_selectedIds.length}'),
             style: const TextStyle(fontWeight: FontWeight.w600),
           ),
           const Spacer(),
@@ -610,19 +616,19 @@ class _ProdukPageState extends State<ProdukPage> {
               setState(() => _selectedIds.clear());
             },
             icon: const Icon(Icons.archive, size: 18),
-            label: const Text('Arsipkan'),
+            label: Text(t.product.btn_archive),
           ),
           const SizedBox(width: 8),
           TextButton.icon(
             onPressed: _showBatchDeleteConfirm,
             icon: const Icon(Icons.delete_outline, size: 18),
-            label: const Text('Hapus'),
+            label: Text(t.product.btn_delete),
             style: TextButton.styleFrom(foregroundColor: AppTheme.warningRed),
           ),
           const SizedBox(width: 8),
           TextButton(
             onPressed: () => setState(() => _selectedIds.clear()),
-            child: const Text('Batal'),
+            child: Text(t.product.btn_cancel),
           ),
         ],
       ),
@@ -633,14 +639,14 @@ class _ProdukPageState extends State<ProdukPage> {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Produk'),
+        title: Text(t.product.dialog_delete_title),
         content: Text(
-          'Hapus ${_selectedIds.length} produk permanen? Tindakan ini tidak bisa dibatalkan.',
+          t.product.dialog_delete_body.replaceFirst('{count}', '${_selectedIds.length}'),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: const Text('Batal'),
+            child: Text(t.product.btn_cancel),
           ),
           TextButton(
             onPressed: () {
@@ -651,7 +657,7 @@ class _ProdukPageState extends State<ProdukPage> {
               setState(() => _selectedIds.clear());
             },
             style: TextButton.styleFrom(foregroundColor: AppTheme.warningRed),
-            child: const Text('Hapus Semua'),
+            child: Text(t.product.btn_delete_all),
           ),
         ],
       ),

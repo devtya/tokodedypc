@@ -54,6 +54,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final Translations$navigation$en navigation = Translations$navigation$en._(_root);
 	late final Translations$dialog$en dialog = Translations$dialog$en._(_root);
 	late final Translations$cashier$en cashier = Translations$cashier$en._(_root);
+	late final Translations$product$en product = Translations$product$en._(_root);
 }
 
 // Path: login
@@ -368,6 +369,86 @@ class Translations$cashier$en {
 	late final Translations$cashier$dialog_print$en dialog_print = Translations$cashier$dialog_print$en._(_root);
 }
 
+// Path: product
+class Translations$product$en {
+	Translations$product$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'Cari produk...'
+	String get search_hint => 'Cari produk...';
+
+	/// en: 'Stok Minimum'
+	String get stock_minimum => 'Stok Minimum';
+
+	/// en: 'Tambah Produk'
+	String get add_product => 'Tambah Produk';
+
+	/// en: 'Semua'
+	String get category_all => 'Semua';
+
+	/// en: 'Kategori'
+	String get category_label => 'Kategori';
+
+	/// en: 'Semua'
+	String get filter_all => 'Semua';
+
+	/// en: 'Stok Tipis'
+	String get filter_low_stock => 'Stok Tipis';
+
+	/// en: 'Habis'
+	String get filter_out_of_stock => 'Habis';
+
+	/// en: 'Arsip'
+	String get filter_archived => 'Arsip';
+
+	/// en: '{count} produk'
+	String get count_format => '{count} produk';
+
+	/// en: 'Produk "{query}" tidak ditemukan'
+	String get not_found => 'Produk "{query}" tidak ditemukan';
+
+	/// en: 'Belum ada produk'
+	String get empty => 'Belum ada produk';
+
+	/// en: '{count} dipilih'
+	String get batch_action => '{count} dipilih';
+
+	/// en: 'Arsipkan'
+	String get btn_archive => 'Arsipkan';
+
+	/// en: 'Hapus'
+	String get btn_delete => 'Hapus';
+
+	/// en: 'Batal'
+	String get btn_cancel => 'Batal';
+
+	/// en: 'Hapus Produk'
+	String get dialog_delete_title => 'Hapus Produk';
+
+	/// en: 'Hapus {count} produk permanen? Tindakan ini tidak bisa dibatalkan.'
+	String get dialog_delete_body => 'Hapus {count} produk permanen? Tindakan ini tidak bisa dibatalkan.';
+
+	/// en: 'Hapus Semua'
+	String get btn_delete_all => 'Hapus Semua';
+
+	/// en: 'Hapus Produk Permanen?'
+	String get dialog_delete_perm_title => 'Hapus Produk Permanen?';
+
+	/// en: 'Apakah Anda yakin ingin menghapus produk ini secara permanen? Aksi ini tidak dapat dibatalkan.'
+	String get dialog_delete_perm_body => 'Apakah Anda yakin ingin menghapus produk ini secara permanen? Aksi ini tidak dapat dibatalkan.';
+
+	/// en: 'Hapus Permanen'
+	String get btn_delete_perm => 'Hapus Permanen';
+
+	/// en: '✓ Tersimpan!'
+	String get saved_badge => '✓ Tersimpan!';
+
+	late final Translations$product$form$en form = Translations$product$form$en._(_root);
+}
+
 // Path: cashier.dialog_payment
 class Translations$cashier$dialog_payment$en {
 	Translations$cashier$dialog_payment$en._(this._root);
@@ -554,6 +635,81 @@ class Translations$cashier$dialog_print$en {
 	String get drawer_failed => 'Gagal membuka laci otomatis, gunakan kunci manual';
 }
 
+// Path: product.form
+class Translations$product$form$en {
+	Translations$product$form$en._(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// en: 'DAFTAR SATUAN ({count})'
+	String get section_units => 'DAFTAR SATUAN ({count})';
+
+	/// en: 'Tambah Satuan'
+	String get btn_add_unit => 'Tambah Satuan';
+
+	/// en: 'Hitung Harga Pokok Dasar'
+	String get btn_calc_cost => 'Hitung Harga Pokok Dasar';
+
+	/// en: 'HARGA POKOK'
+	String get label_cost => 'HARGA POKOK';
+
+	/// en: 'HARGA JUAL'
+	String get label_sell => 'HARGA JUAL';
+
+	/// en: 'KONVERSI'
+	String get label_conversion => 'KONVERSI';
+
+	/// en: 'LABA'
+	String get label_profit => 'LABA';
+
+	/// en: 'SATUAN DASAR'
+	String get type_base => 'SATUAN DASAR';
+
+	/// en: 'BASE'
+	String get badge_base => 'BASE';
+
+	/// en: 'Konversi: {value}'
+	String get conversion_text => 'Konversi: {value}';
+
+	/// en: 'Harga Pokok'
+	String get dialog_cost_title => 'Harga Pokok';
+
+	/// en: 'Harga Jual'
+	String get dialog_sell_title => 'Harga Jual';
+
+	/// en: 'Simpan'
+	String get btn_save => 'Simpan';
+
+	/// en: 'Batal'
+	String get btn_cancel => 'Batal';
+
+	/// en: 'Nama Satuan'
+	String get unit_name_hint => 'Nama Satuan';
+
+	/// en: 'Konversi'
+	String get conversion_hint => 'Konversi';
+
+	/// en: 'Harga Pokok (Rp)'
+	String get cost_hint => 'Harga Pokok (Rp)';
+
+	/// en: 'Harga Jual (Rp)'
+	String get sell_hint => 'Harga Jual (Rp)';
+
+	/// en: 'BARU'
+	String get placeholder_name => 'BARU';
+
+	/// en: 'Edit Satuan'
+	String get edit_title => 'Edit Satuan';
+
+	/// en: 'Simpan Satuan'
+	String get btn_save_unit => 'Simpan Satuan';
+
+	/// en: 'Laba'
+	String get label_laba => 'Laba';
+}
+
 /// The flat map containing all translations for locale <en>.
 /// Only for edge cases! For simple maps, use the map function of this library.
 ///
@@ -672,6 +828,51 @@ extension on Translations {
 			'cashier.dialog_print.btn_yes' => 'Ya, Cetak',
 			'cashier.dialog_print.btn_no' => 'Tidak',
 			'cashier.dialog_print.drawer_failed' => 'Gagal membuka laci otomatis, gunakan kunci manual',
+			'product.search_hint' => 'Cari produk...',
+			'product.stock_minimum' => 'Stok Minimum',
+			'product.add_product' => 'Tambah Produk',
+			'product.category_all' => 'Semua',
+			'product.category_label' => 'Kategori',
+			'product.filter_all' => 'Semua',
+			'product.filter_low_stock' => 'Stok Tipis',
+			'product.filter_out_of_stock' => 'Habis',
+			'product.filter_archived' => 'Arsip',
+			'product.count_format' => '{count} produk',
+			'product.not_found' => 'Produk "{query}" tidak ditemukan',
+			'product.empty' => 'Belum ada produk',
+			'product.batch_action' => '{count} dipilih',
+			'product.btn_archive' => 'Arsipkan',
+			'product.btn_delete' => 'Hapus',
+			'product.btn_cancel' => 'Batal',
+			'product.dialog_delete_title' => 'Hapus Produk',
+			'product.dialog_delete_body' => 'Hapus {count} produk permanen? Tindakan ini tidak bisa dibatalkan.',
+			'product.btn_delete_all' => 'Hapus Semua',
+			'product.dialog_delete_perm_title' => 'Hapus Produk Permanen?',
+			'product.dialog_delete_perm_body' => 'Apakah Anda yakin ingin menghapus produk ini secara permanen? Aksi ini tidak dapat dibatalkan.',
+			'product.btn_delete_perm' => 'Hapus Permanen',
+			'product.saved_badge' => '✓ Tersimpan!',
+			'product.form.section_units' => 'DAFTAR SATUAN ({count})',
+			'product.form.btn_add_unit' => 'Tambah Satuan',
+			'product.form.btn_calc_cost' => 'Hitung Harga Pokok Dasar',
+			'product.form.label_cost' => 'HARGA POKOK',
+			'product.form.label_sell' => 'HARGA JUAL',
+			'product.form.label_conversion' => 'KONVERSI',
+			'product.form.label_profit' => 'LABA',
+			'product.form.type_base' => 'SATUAN DASAR',
+			'product.form.badge_base' => 'BASE',
+			'product.form.conversion_text' => 'Konversi: {value}',
+			'product.form.dialog_cost_title' => 'Harga Pokok',
+			'product.form.dialog_sell_title' => 'Harga Jual',
+			'product.form.btn_save' => 'Simpan',
+			'product.form.btn_cancel' => 'Batal',
+			'product.form.unit_name_hint' => 'Nama Satuan',
+			'product.form.conversion_hint' => 'Konversi',
+			'product.form.cost_hint' => 'Harga Pokok (Rp)',
+			'product.form.sell_hint' => 'Harga Jual (Rp)',
+			'product.form.placeholder_name' => 'BARU',
+			'product.form.edit_title' => 'Edit Satuan',
+			'product.form.btn_save_unit' => 'Simpan Satuan',
+			'product.form.label_laba' => 'Laba',
 			_ => null,
 		};
 	}
